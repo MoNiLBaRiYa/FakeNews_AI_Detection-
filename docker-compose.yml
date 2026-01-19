@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: fakenews_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: user_auth_db
+    networks:
+      - fakenews_network
+
+  web:
+    build: .
+    container_name: fakenews_app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongodb
+    environment:
+      - FLASK_ENV=production
+      - MONGODB_URI=mongodb://mongodb:27017/
+      - DATABASE_NAME=user_auth_db
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - fakenews_network
+
+volumes:
+  mongodb_data:
+
+networks:
+  fakenews_network:
+    driver: bridge

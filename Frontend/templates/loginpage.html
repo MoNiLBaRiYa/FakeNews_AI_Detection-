@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login & Sign Up - Fake News Detector</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/loginpage.css') }}">
+    <script>
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.innerHTML = `<i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i> ${message}`;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.classList.add('show'), 10);
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        function setLoading(button, isLoading) {
+            if (isLoading) {
+                button.disabled = true;
+                button.dataset.originalText = button.textContent;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+            } else {
+                button.disabled = false;
+                button.textContent = button.dataset.originalText;
+            }
+        }
+
+        function login() {
+            const email = document.getElementById("login-email").value.trim();
+            const password = document.getElementById("login-password").value;
+            const button = event.target;
+
+            if (!email || !password) {
+                showNotification('Please fill in all fields', 'error');
+                return;
+            }
+
+            setLoading(button, true);
+
+            fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                setLoading(button, false);
+                if (data.message === 'Login successful') {
+                    showNotification('Login successful! Redirecting...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/fakenews';
+                    }, 1000);
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                setLoading(button, false);
+                console.error('Error:', error);
+                showNotification('Login failed. Please try again.', 'error');
+            });
+        }
+
+        function signup() {
+            const email = document.getElementById("signup-email").value.trim();
+            const password = document.getElementById("signup-password").value;
+            const confirmPassword = document.getElementById("signup-confirm-password").value;
+            const button = event.target;
+
+            if (!email || !password || !confirmPassword) {
+                showNotification('Please fill in all fields', 'error');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showNotification('Passwords do not match', 'error');
+                return;
+            }
+
+            if (password.length < 6) {
+                showNotification('Password must be at least 6 characters', 'error');
+                return;
+            }
+
+            setLoading(button, true);
+
+            fetch('/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                setLoading(button, false);
+                if (data.message === 'User registered successfully') {
+                    showNotification('Registration successful! Please login.', 'success');
+                    setTimeout(() => showLogin(), 1000);
+                } else {
+                    showNotification(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                setLoading(button, false);
+                console.error('Error:', error);
+                showNotification('Registration failed. Please try again.', 'error');
+            });
+        }
+
+        function forgotPassword() {
+            const email = prompt("Enter your email to reset password:");
+            if (email && email.trim()) {
+                fetch('/forgot_password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email.trim() })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    showNotification(data.message, data.message.includes('sent') ? 'success' : 'error');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('Failed to process request', 'error');
+                });
+            }
+        }
+
+        function showSignup() {
+            document.getElementById("login-container").classList.add("hidden");
+            document.getElementById("signup-container").classList.remove("hidden");
+        }
+
+        function showLogin() {
+            document.getElementById("signup-container").classList.add("hidden");
+            document.getElementById("login-container").classList.remove("hidden");
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container" id="login-container">
+            <div class="logo">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <h1>FAKE NEWS DETECTOR</h1>
+            <p class="subtitle">AI-Powered Truth Verification</p>
+            
+            <div class="input-group">
+                <i class="fas fa-envelope"></i>
+                <input type="email" id="login-email" placeholder="Email" required>
+            </div>
+            
+            <div class="input-group">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="login-password" placeholder="Password" required>
+            </div>
+            
+            <button onclick="login()" class="btn-primary">
+                <i class="fas fa-sign-in-alt"></i> Login
+            </button>
+            
+            <p class="link-text">
+                <a href="#" onclick="forgotPassword(); return false;">Forgot Password?</a>
+            </p>
+            <p class="link-text">
+                Don't have an account? <a href="#" onclick="showSignup(); return false;">Sign Up</a>
+            </p>
+        </div>
+
+        <div class="form-container hidden" id="signup-container">
+            <div class="logo">
+                <i class="fas fa-user-plus"></i>
+            </div>
+            <h1>Create Account</h1>
+            <p class="subtitle">Join the fight against misinformation</p>
+            
+            <div class="input-group">
+                <i class="fas fa-envelope"></i>
+                <input type="email" id="signup-email" placeholder="Email" required>
+            </div>
+            
+            <div class="input-group">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="signup-password" placeholder="Password (min 6 characters)" required>
+            </div>
+            
+            <div class="input-group">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="signup-confirm-password" placeholder="Confirm Password" required>
+            </div>
+            
+            <button onclick="signup()" class="btn-primary">
+                <i class="fas fa-user-plus"></i> Sign Up
+            </button>
+            
+            <p class="link-text">
+                Already have an account? <a href="#" onclick="showLogin(); return false;">Login</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

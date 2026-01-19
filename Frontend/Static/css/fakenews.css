@@ -1,0 +1,628 @@
+/* Reset and Global Styling */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    background: #0a0a0a;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #e9edef;
+}
+
+/* Chat Container */
+.chat-container {
+    width: 100%;
+    max-width: 1000px;
+    height: 100vh;
+    background: #111b21;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Chat Header */
+.chat-header {
+    background: #202c33;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #313d45;
+    position: relative;
+    z-index: 1;
+}
+
+.chat-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #00a884, transparent);
+    opacity: 0.3;
+}
+
+.chat-header-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.chat-avatar {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #00a884, #008f6f);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+    box-shadow: 0 2px 8px rgba(0, 168, 132, 0.3);
+    position: relative;
+}
+
+.chat-avatar::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #00a884;
+    border-radius: 50%;
+    bottom: 2px;
+    right: 2px;
+    border: 2px solid #111b21;
+}
+
+.chat-title h2 {
+    font-size: 16px;
+    color: #e9edef;
+    margin-bottom: 2px;
+    font-weight: 500;
+}
+
+.status {
+    font-size: 13px;
+    color: #8696a0;
+}
+
+.logout-button {
+    background: none;
+    border: none;
+    color: #8696a0;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.logout-button:hover {
+    background-color: #313d45;
+    color: #e9edef;
+    transform: scale(1.1);
+}
+
+/* Chat Messages Area */
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    background: #0b141a;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+}
+
+.chat-messages::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100px;
+    background: linear-gradient(to bottom, rgba(11, 20, 26, 0.8), transparent);
+    pointer-events: none;
+}
+
+/* Message Styles */
+.message {
+    max-width: 65%;
+    padding: 8px 12px;
+    border-radius: 7.5px;
+    position: relative;
+    line-height: 1.4;
+    animation: messageAppear 0.3s ease-out;
+}
+
+@keyframes messageAppear {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message.sent {
+    background: #005c4b;
+    align-self: flex-end;
+    border-top-right-radius: 0;
+    box-shadow: 0 2px 8px rgba(0, 92, 75, 0.2);
+}
+
+.message.received {
+    background: #202c33;
+    align-self: flex-start;
+    border-top-left-radius: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Chat Input Area */
+.chat-input-container {
+    background: #202c33;
+    padding: 12px;
+    border-top: 1px solid #313d45;
+    position: relative;
+}
+
+.chat-input-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #00a884, transparent);
+    opacity: 0.3;
+}
+
+.input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #2a3942;
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+input[type="text"] {
+    flex: 1;
+    border: none;
+    padding: 9px 12px;
+    font-size: 15px;
+    outline: none;
+    background: transparent;
+    color: #e9edef;
+}
+
+input[type="text"]::placeholder {
+    color: #8696a0;
+}
+
+.attach-button, .send-button {
+    background: none;
+    border: none;
+    color: #8696a0;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.attach-button:hover, .send-button:hover {
+    background-color: #313d45;
+    color: #e9edef;
+    transform: scale(1.1);
+}
+
+/* News Fetcher Section */
+.news-fetcher {
+    background: #202c33;
+    padding: 16px;
+    border-top: 1px solid #313d45;
+}
+
+.news-input-wrapper {
+    display: flex;
+    gap: 8px;
+    background: #2a3942;
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.news-input-wrapper input {
+    flex: 1;
+    border: none;
+    padding: 9px 12px;
+    font-size: 15px;
+    outline: none;
+    background: transparent;
+    color: #e9edef;
+}
+
+.news-input-wrapper input::placeholder {
+    color: #8696a0;
+}
+
+.news-input-wrapper button {
+    background: none;
+    border: none;
+    color: #8696a0;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.news-input-wrapper button:hover {
+    background-color: #313d45;
+    color: #e9edef;
+    transform: scale(1.1);
+}
+
+.news-list {
+    margin-top: 16px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #313d45;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #8696a0;
+}
+
+/* Typing Indicator */
+.typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px;
+}
+
+.typing-indicator span {
+    width: 8px;
+    height: 8px;
+    background: #8696a0;
+    border-radius: 50%;
+    animation: typing 1s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typing {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-5px);
+    }
+}
+
+/* News Items */
+.news-item {
+    background: #2a3942;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.news-content {
+    flex: 1;
+    color: #e9edef;
+}
+
+.news-status {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.news-status.fake {
+    background: rgba(255, 0, 0, 0.1);
+    color: #ff4444;
+}
+
+.news-status.real {
+    background: rgba(0, 255, 0, 0.1);
+    color: #00ff00;
+}
+
+/* Loading and Error States */
+.loading, .error {
+    text-align: center;
+    padding: 16px;
+    color: #8696a0;
+}
+
+.error {
+    color: #ff4444;
+}
+
+/* Message Timestamp */
+.message-time {
+    font-size: 11px;
+    color: #8696a0;
+    display: block;
+    text-align: right;
+    margin-top: 4px;
+}
+
+/* Confidence Bar with Animation */
+.confidence-bar {
+    width: 100%;
+    height: 6px;
+    background: #313d45;
+    border-radius: 3px;
+    margin-top: 8px;
+    overflow: hidden;
+}
+
+.confidence-fill {
+    height: 100%;
+    transition: width 0.5s ease;
+    border-radius: 3px;
+}
+
+@keyframes fillBar {
+    from {
+        width: 0%;
+    }
+}
+
+/* Reliability Badge */
+.reliability-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+.reliability-high {
+    background: rgba(0, 255, 0, 0.2);
+    color: #00ff00;
+}
+
+.reliability-medium {
+    background: rgba(255, 170, 0, 0.2);
+    color: #ffaa00;
+}
+
+.reliability-low {
+    background: rgba(255, 68, 68, 0.2);
+    color: #ff4444;
+}
+
+/* Notification System */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    opacity: 0;
+    transform: translateX(400px);
+    transition: all 0.3s ease;
+}
+
+.notification.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.notification-success {
+    background: #00a884;
+}
+
+.notification-error {
+    background: #ff4444;
+}
+
+.notification-warning {
+    background: #ffaa00;
+}
+
+.notification-info {
+    background: #0088cc;
+}
+
+/* News Header */
+.news-header {
+    padding: 12px;
+    background: #313d45;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    text-align: center;
+    color: #00a884;
+}
+
+/* News Number Badge */
+.news-number {
+    width: 32px;
+    height: 32px;
+    background: #00a884;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+    flex-shrink: 0;
+}
+
+/* Improved News Item */
+.news-item {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.news-item:hover {
+    background: #313d45;
+    transform: translateX(4px);
+}
+
+.news-item p {
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Loading Spinner */
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid #313d45;
+    border-top-color: #00a884;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+    margin-right: 8px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Improved Status Badges */
+.news-status {
+    white-space: nowrap;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .chat-container {
+        max-width: 100%;
+        height: 100vh;
+        border-radius: 0;
+    }
+
+    .message {
+        max-width: 80%;
+    }
+
+    .news-item {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .news-number {
+        align-self: flex-start;
+    }
+
+    .notification {
+        right: 10px;
+        left: 10px;
+        top: 10px;
+    }
+}
+
+/* Accessibility */
+button:focus,
+input:focus {
+    outline: 2px solid #00a884;
+    outline-offset: 2px;
+}
+
+/* Dark Mode Enhancements */
+@media (prefers-color-scheme: dark) {
+    body {
+        background: #000;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .chat-header,
+    .chat-input-container,
+    .news-fetcher {
+        display: none;
+    }
+
+    .chat-messages {
+        height: auto;
+        overflow: visible;
+    }
+}
+
+/* Animation for news items */
+.news-item {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Improved scrollbar for news list */
+.news-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.news-list::-webkit-scrollbar-track {
+    background: #202c33;
+    border-radius: 4px;
+}
+
+.news-list::-webkit-scrollbar-thumb {
+    background: #00a884;
+    border-radius: 4px;
+}
+
+.news-list::-webkit-scrollbar-thumb:hover {
+    background: #008f6f;
+}
