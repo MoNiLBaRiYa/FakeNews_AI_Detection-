@@ -5,7 +5,7 @@ from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 
-app = Flask(__name__, template_folder="../Frontend/templates", static_folder="../Frontend/static")
+app = Flask(__name__, template_folder="Frontend/templates", static_folder="Frontend/Static")
 
 # MongoDB Connection with error handling
 try:
@@ -18,7 +18,7 @@ except Exception as e:
 
 # Load trained model with error handling
 try:
-    model_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Model", "model.pkl")
+    model_path = os.path.join(os.path.dirname(__file__), "Model", "model.pkl")
     model = joblib.load(model_path)
 except Exception as e:
     print(f"Error loading model: {e}")

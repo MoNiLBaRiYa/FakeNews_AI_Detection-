@@ -44,6 +44,9 @@ app = Flask(__name__,
 env = os.getenv('FLASK_ENV', 'development')
 app.config.from_object(config[env])
 
+# Validate API keys
+config[env].validate_api_keys()
+
 # Initialize extensions
 cache = Cache(app)
 limiter = Limiter(
