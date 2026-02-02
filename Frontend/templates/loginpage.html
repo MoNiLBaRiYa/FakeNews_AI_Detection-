@@ -3,31 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login & Sign Up - Fake News Detector</title>
+    <title>Login - Fake News Detector</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'slide-up': 'slideUp 0.6s ease-out',
+                        'float': 'float 20s ease-in-out infinite',
+                        'float-reverse': 'float 15s ease-in-out infinite reverse',
+                    },
+                    keyframes: {
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(30px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translate(0, 0)' },
+                            '50%': { transform: 'translate(30px, 30px)' },
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/loginpage.css') }}">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .bg-animated::before {
+            content: '';
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            top: -250px;
+            right: -250px;
+            animation: float 20s ease-in-out infinite;
+        }
+        .bg-animated::after {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            bottom: -200px;
+            left: -200px;
+            animation: float 15s ease-in-out infinite reverse;
+        }
+    </style>
+    
     <script>
         function showNotification(message, type = 'info') {
             const notification = document.createElement('div');
-            notification.className = `notification notification-${type}`;
-            notification.innerHTML = `<i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'}"></i> ${message}`;
+            const icons = { error: 'exclamation-circle', success: 'check-circle', info: 'info-circle' };
+            const colors = { 
+                error: 'bg-gradient-to-r from-red-500 to-red-600', 
+                success: 'bg-gradient-to-r from-green-500 to-green-600', 
+                info: 'bg-gradient-to-r from-blue-500 to-blue-600' 
+            };
+            
+            notification.className = `${colors[type]} text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 max-w-md fixed top-6 right-6 z-50 transform translate-x-[500px] transition-transform duration-500`;
+            notification.innerHTML = `<i class="fas fa-${icons[type]} text-xl"></i><span class="font-semibold">${message}</span>`;
             document.body.appendChild(notification);
             
-            setTimeout(() => notification.classList.add('show'), 10);
+            setTimeout(() => notification.style.transform = 'translateX(0)', 10);
             setTimeout(() => {
-                notification.classList.remove('show');
-                setTimeout(() => notification.remove(), 300);
+                notification.style.transform = 'translateX(500px)';
+                setTimeout(() => notification.remove(), 500);
             }, 3000);
         }
 
         function setLoading(button, isLoading) {
             if (isLoading) {
                 button.disabled = true;
-                button.dataset.originalText = button.textContent;
-                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+                button.dataset.originalText = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
             } else {
                 button.disabled = false;
-                button.textContent = button.dataset.originalText;
+                button.innerHTML = button.dataset.originalText;
             }
         }
 
@@ -142,66 +208,115 @@
         }
     </script>
 </head>
-<body>
-    <div class="container">
-        <div class="form-container" id="login-container">
-            <div class="logo">
+<body class="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 min-h-screen flex justify-center items-center p-5 relative overflow-hidden bg-animated">
+    <div class="relative z-10 w-full max-w-md">
+        <!-- Login Form -->
+        <div id="login-container" class="bg-white/95 backdrop-blur-2xl rounded-3xl p-12 shadow-2xl animate-slide-up border border-white/30">
+            <div class="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-blue-700 rounded-3xl flex items-center justify-center text-white text-5xl shadow-xl shadow-blue-500/30">
                 <i class="fas fa-shield-alt"></i>
             </div>
-            <h1>FAKE NEWS DETECTOR</h1>
-            <p class="subtitle">AI-Powered Truth Verification</p>
+            <h1 class="text-center text-gray-900 text-3xl font-black mb-2">Welcome Back</h1>
+            <p class="text-center text-gray-600 text-base mb-8 font-medium">Sign in to continue to Fake News Detector</p>
             
-            <div class="input-group">
-                <i class="fas fa-envelope"></i>
-                <input type="email" id="login-email" placeholder="Email" required>
+            <div class="relative mb-5">
+                <i class="fas fa-envelope absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-lg z-10"></i>
+                <input type="email" id="login-email" placeholder="Email address" required
+                    class="w-full pl-14 pr-4 py-4 bg-white border-2 border-gray-200 rounded-2xl text-gray-900 text-base outline-none transition-all duration-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10">
             </div>
             
-            <div class="input-group">
-                <i class="fas fa-lock"></i>
-                <input type="password" id="login-password" placeholder="Password" required>
+            <div class="relative mb-5">
+                <i class="fas fa-lock absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-lg z-10"></i>
+                <input type="password" id="login-password" placeholder="Password" required
+                    class="w-full pl-14 pr-4 py-4 bg-white border-2 border-gray-200 rounded-2xl text-gray-900 text-base outline-none transition-all duration-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10">
             </div>
             
-            <button onclick="login()" class="btn-primary">
-                <i class="fas fa-sign-in-alt"></i> Login
+            <button onclick="login()" class="w-full py-4 bg-gradient-to-r from-blue-500 to-blue-700 border-none rounded-2xl text-white text-base font-bold cursor-pointer transition-all duration-300 mt-2 shadow-lg shadow-blue-500/30 flex items-center justify-center gap-3 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-500/40 disabled:opacity-60 disabled:cursor-not-allowed">
+                <i class="fas fa-sign-in-alt"></i> Sign In
             </button>
             
-            <p class="link-text">
-                <a href="#" onclick="forgotPassword(); return false;">Forgot Password?</a>
+            <p class="text-center mt-4 text-gray-600 text-sm">
+                <a href="#" onclick="forgotPassword(); return false;" class="text-blue-500 no-underline font-semibold transition-colors duration-300 hover:text-blue-700 hover:underline">Forgot Password?</a>
             </p>
-            <p class="link-text">
-                Don't have an account? <a href="#" onclick="showSignup(); return false;">Sign Up</a>
+            <p class="text-center mt-4 text-gray-600 text-sm">
+                Don't have an account? <a href="#" onclick="showSignup(); return false;" class="text-blue-500 no-underline font-semibold transition-colors duration-300 hover:text-blue-700 hover:underline">Sign Up</a>
             </p>
+
+            <div class="grid grid-cols-3 gap-4 mt-8 pt-8 border-t border-gray-200">
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500/10 to-blue-700/10 rounded-2xl flex items-center justify-center mx-auto mb-2 text-blue-500 text-xl">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="text-xs text-gray-600 font-medium">AI-Powered</div>
+                </div>
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-gradient-to-br from-purple-500/10 to-purple-700/10 rounded-2xl flex items-center justify-center mx-auto mb-2 text-purple-500 text-xl">
+                        <i class="fas fa-language"></i>
+                    </div>
+                    <div class="text-xs text-gray-600 font-medium">Multi-Language</div>
+                </div>
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-gradient-to-br from-pink-500/10 to-pink-700/10 rounded-2xl flex items-center justify-center mx-auto mb-2 text-pink-500 text-xl">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <div class="text-xs text-gray-600 font-medium">Real-Time</div>
+                </div>
+            </div>
         </div>
 
-        <div class="form-container hidden" id="signup-container">
-            <div class="logo">
+        <!-- Signup Form -->
+        <div id="signup-container" class="hidden bg-white/95 backdrop-blur-2xl rounded-3xl p-12 shadow-2xl animate-slide-up border border-white/30">
+            <div class="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-purple-500 to-purple-700 rounded-3xl flex items-center justify-center text-white text-5xl shadow-xl shadow-purple-500/30">
                 <i class="fas fa-user-plus"></i>
             </div>
-            <h1>Create Account</h1>
-            <p class="subtitle">Join the fight against misinformation</p>
+            <h1 class="text-center text-gray-900 text-3xl font-black mb-2">Create Account</h1>
+            <p class="text-center text-gray-600 text-base mb-8 font-medium">Join us in fighting misinformation</p>
             
-            <div class="input-group">
-                <i class="fas fa-envelope"></i>
-                <input type="email" id="signup-email" placeholder="Email" required>
+            <div class="relative mb-5">
+                <i class="fas fa-envelope absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-lg z-10"></i>
+                <input type="email" id="signup-email" placeholder="Email address" required
+                    class="w-full pl-14 pr-4 py-4 bg-white border-2 border-gray-200 rounded-2xl text-gray-900 text-base outline-none transition-all duration-300 focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10">
             </div>
             
-            <div class="input-group">
-                <i class="fas fa-lock"></i>
-                <input type="password" id="signup-password" placeholder="Password (min 6 characters)" required>
+            <div class="relative mb-5">
+                <i class="fas fa-lock absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-lg z-10"></i>
+                <input type="password" id="signup-password" placeholder="Password (min 6 characters)" required
+                    class="w-full pl-14 pr-4 py-4 bg-white border-2 border-gray-200 rounded-2xl text-gray-900 text-base outline-none transition-all duration-300 focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10">
             </div>
             
-            <div class="input-group">
-                <i class="fas fa-lock"></i>
-                <input type="password" id="signup-confirm-password" placeholder="Confirm Password" required>
+            <div class="relative mb-5">
+                <i class="fas fa-lock absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-lg z-10"></i>
+                <input type="password" id="signup-confirm-password" placeholder="Confirm Password" required
+                    class="w-full pl-14 pr-4 py-4 bg-white border-2 border-gray-200 rounded-2xl text-gray-900 text-base outline-none transition-all duration-300 focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10">
             </div>
             
-            <button onclick="signup()" class="btn-primary">
-                <i class="fas fa-user-plus"></i> Sign Up
+            <button onclick="signup()" class="w-full py-4 bg-gradient-to-r from-purple-500 to-purple-700 border-none rounded-2xl text-white text-base font-bold cursor-pointer transition-all duration-300 mt-2 shadow-lg shadow-purple-500/30 flex items-center justify-center gap-3 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-purple-500/40 disabled:opacity-60 disabled:cursor-not-allowed">
+                <i class="fas fa-user-plus"></i> Create Account
             </button>
             
-            <p class="link-text">
-                Already have an account? <a href="#" onclick="showLogin(); return false;">Login</a>
+            <p class="text-center mt-4 text-gray-600 text-sm">
+                Already have an account? <a href="#" onclick="showLogin(); return false;" class="text-purple-500 no-underline font-semibold transition-colors duration-300 hover:text-purple-700 hover:underline">Sign In</a>
             </p>
+
+            <div class="grid grid-cols-3 gap-4 mt-8 pt-8 border-t border-gray-200">
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-gradient-to-br from-green-500/10 to-green-700/10 rounded-2xl flex items-center justify-center mx-auto mb-2 text-green-500 text-xl">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="text-xs text-gray-600 font-medium">Secure</div>
+                </div>
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500/10 to-blue-700/10 rounded-2xl flex items-center justify-center mx-auto mb-2 text-blue-500 text-xl">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="text-xs text-gray-600 font-medium">Verified</div>
+                </div>
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-gradient-to-br from-indigo-500/10 to-indigo-700/10 rounded-2xl flex items-center justify-center mx-auto mb-2 text-indigo-500 text-xl">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <div class="text-xs text-gray-600 font-medium">Private</div>
+                </div>
+            </div>
         </div>
     </div>
 </body>

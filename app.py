@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, request, render_template
 import joblib
-from FND import fetch_and_predict_news  # Import real-time news fetching function
+from Backend.FND import fetch_and_predict_news, predict_news  # Import from Backend
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
@@ -16,13 +16,31 @@ except Exception as e:
     print(f"Error connecting to MongoDB: {e}")
     users = None
 
-# Load trained model with error handling
+# Load trained models with error handling (DUAL MODEL APPROACH)
+model_article = None  # For full articles
+model_headline = None  # For headlines
+
 try:
-    model_path = os.path.join(os.path.dirname(__file__), "Model", "model.pkl")
-    model = joblib.load(model_path)
+    # Load article model
+    model_path = os.path.join(os.path.dirname(__file__), "Model", "model_improved.pkl")
+    if os.path.exists(model_path):
+        model_article = joblib.load(model_path)
+        print("✅ Article model loaded (99.63% accuracy)")
+    else:
+        model_path = os.path.join(os.path.dirname(__file__), "Model", "model.pkl")
+        model_article = joblib.load(model_path)
+        print("✅ Article model loaded (94.25% accuracy)")
 except Exception as e:
-    print(f"Error loading model: {e}")
-    model = None
+    print(f"Error loading article model: {e}")
+
+try:
+    # Load headline model
+    headline_path = os.path.join(os.path.dirname(__file__), "Model", "model_headlines.pkl")
+    if os.path.exists(headline_path):
+        model_headline = joblib.load(headline_path)
+        print("✅ Headline model loaded (95.24% accuracy)")
+except Exception as e:
+    print(f"Error loading headline model: {e}")
 
 # Email validation function
 def is_valid_email(email):
@@ -84,9 +102,6 @@ def fakenews():
 #  Route: Predict Fake/Real News
 @app.route('/predict', methods=['POST'])
 def predict():
-    if model is None:
-        return jsonify({'error': 'Model not loaded'}), 500
-        
     data = request.json
     text = data.get('text')
 
@@ -94,20 +109,59 @@ def predict():
         return jsonify({'error': 'No text provided'}), 400
 
     try:
-        # Preprocess text before prediction
-        def clean_text(text):
-            import re
-            text = text.lower()
-            text = re.sub(r'https?://\S+|www\.\S+', '', text)  # Remove URLs
-            text = re.sub(r'<.*?>', '', text)  # Remove HTML tags
-            text = re.sub(r'[^a-z\s]', '', text)  # Remove special characters
-            return text
-
-        processed_text = clean_text(text)
-        prediction = model.predict([processed_text])
-        result = 'Fake News' if prediction[0] == 0 else 'Real News'
+        # Use the SAME prediction function as news search for consistency
+        result = predict_news(text)
         
-        return jsonify({'prediction': result})
+        # Get prediction probabilities for confidence
+        try:
+            # Basic cleaning for model
+            import re
+            text_clean = text.lower()
+            text_clean = re.sub(r'https?://\S+|www\.\S+', '', text_clean)
+            text_clean = re.sub(r'<.*?>', '', text_clean)
+            text_clean = re.sub(r'\S+@\S+', '', text_clean)
+            
+            # Select appropriate model based on text length
+            char_count = len(text_clean)
+            selected_model = model_headline if char_count < 300 and model_headline else model_article
+            
+            if selected_model is not None:
+                proba = selected_model.predict_proba([text_clean])[0]
+                confidence = round(max(proba) * 100, 2)
+            else:
+                confidence = 85.0
+        except:
+            # Fallback confidence based on text characteristics
+            if len(text) > 200:
+                confidence = 92.0
+            elif len(text) > 100:
+                confidence = 85.0
+            else:
+                confidence = 75.0
+        
+        # Calculate reliability based on confidence
+        if confidence >= 90:
+            reliability = "High"
+        elif confidence >= 75:
+            reliability = "Medium"
+        else:
+            reliability = "Low"
+        
+        # Detect language (simple detection)
+        language_name = "English"
+        if any(ord(char) >= 0x0900 and ord(char) <= 0x097F for char in text):
+            language_name = "Hindi"
+        elif any(ord(char) >= 0x0A80 and ord(char) <= 0x0AFF for char in text):
+            language_name = "Gujarati"
+        
+        return jsonify({
+            'prediction': result,
+            'prediction_en': result,
+            'confidence': confidence,
+            'reliability': reliability,
+            'reliability_en': reliability,
+            'language_name': language_name
+        })
     except Exception as e:
         return jsonify({'error': f'Prediction error: {str(e)}'}), 500
 

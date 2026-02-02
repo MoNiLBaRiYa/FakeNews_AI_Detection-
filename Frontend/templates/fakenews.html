@@ -3,58 +3,291 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fake News Detector</title>
-
-    <!-- Font Awesome for Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/fakenews.css') }}">
+    <title>Fake News Detector - AI-Powered Truth Verification</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        'primary-dark': '#2563eb',
+                        success: '#10b981',
+                        danger: '#ef4444',
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'slide-up': 'slideUp 0.6s ease-out',
+                        'slide-down': 'slideDown 0.5s ease-out',
+                        'pulse-slow': 'pulse 3s ease-in-out infinite',
+                        'float': 'float 3s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(30px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        slideDown: {
+                            '0%': { opacity: '0', transform: 'translateY(-100%)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        },
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .shimmer::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+    </style>
 </head>
-<body>
-    <div class="chat-container">
-        <div class="chat-header">
-            <div class="chat-header-info">
-                <div class="chat-avatar">
-                    <i class="fas fa-robot"></i>
+<body class="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 min-h-screen">
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-50 bg-white/95 backdrop-blur-xl shadow-lg animate-slide-down">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-20">
+                <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg shadow-blue-500/30 animate-pulse-slow">
+                        <i class="fas fa-shield-check"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-black text-gray-900">TruthGuard</h1>
+                        <span class="text-xs font-semibold text-gray-500">AI-Powered Verification</span>
+                    </div>
                 </div>
-                <div class="chat-title">
-                    <h2>Fake News Detector</h2>
-                    <span class="status">Online</span>
+                <div class="flex gap-3">
+                    <button onclick="showHelp()" class="flex items-center gap-2 px-5 py-2.5 bg-gray-100 hover:bg-blue-500 hover:text-white rounded-xl font-semibold text-gray-700 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg">
+                        <i class="fas fa-question-circle"></i>
+                        <span class="hidden sm:inline">Help</span>
+                    </button>
+                    <button onclick="logout()" class="flex items-center gap-2 px-5 py-2.5 bg-gray-100 hover:bg-red-500 hover:text-white rounded-xl font-semibold text-gray-700 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span class="hidden sm:inline">Logout</span>
+                    </button>
                 </div>
             </div>
-            <button class="logout-button" onclick="logout()">
-                <i class="fas fa-sign-out-alt"></i>
-            </button>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Hero Section -->
+        <div class="text-center py-12 animate-slide-up">
+            <h2 class="text-5xl md:text-6xl font-black text-white mb-4 drop-shadow-2xl">
+                Verify News Authenticity with AI
+            </h2>
+            <p class="text-xl text-white/90 font-medium">
+                Paste full articles for accurate analysis • Supports English, Hindi & Gujarati
+            </p>
         </div>
 
-        <div class="chat-messages" id="messages">
-            <!-- Messages will be added here dynamically -->
-        </div>
+        <!-- Analysis Section -->
+        <div class="space-y-6 mb-12">
+            <div class="bg-white rounded-3xl shadow-2xl overflow-hidden transform transition-all duration-300 hover:-translate-y-1 hover:shadow-3xl">
+                <div class="bg-gradient-to-r from-blue-500 to-blue-700 p-8 flex items-center gap-4">
+                    <div class="w-16 h-16 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center text-white text-3xl">
+                        <i class="fas fa-newspaper"></i>
+                    </div>
+                    <div class="text-white">
+                        <h3 class="text-2xl font-bold mb-1">Article Analysis</h3>
+                        <p class="text-blue-100 text-sm">Paste the complete news article below for verification</p>
+                    </div>
+                </div>
+                
+                <div class="p-8">
+                    <textarea 
+                        id="articleInput" 
+                        placeholder="Paste the full news article here... (Minimum 100 characters for accurate analysis)"
+                        rows="12"
+                        class="w-full p-6 border-2 border-gray-200 rounded-2xl text-base resize-y transition-all duration-300 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 bg-gray-50 focus:bg-white"
+                    ></textarea>
+                    <div class="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6">
+                        <div class="text-sm font-semibold text-gray-600">
+                            <span id="charCount" class="text-blue-600 text-lg font-bold">0</span> characters
+                            <span class="text-gray-400 ml-2">• Minimum 100 recommended</span>
+                        </div>
+                        <button onclick="analyzeArticle()" id="analyzeBtn" class="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-2xl font-bold text-base shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed">
+                            <i class="fas fa-search"></i>
+                            <span>Analyze Article</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
 
-        <div class="chat-input-container">
-            <div class="input-wrapper">
-                <input type="text" id="messageInput" placeholder="Type a message...">
-                <button class="attach-button" onclick="handleAttach()">
-                    <i class="fas fa-paperclip"></i>
-                </button>
-                <button class="send-button" onclick="sendMessage()">
-                    <i class="fas fa-paper-plane"></i>
-                </button>
+            <!-- Results Card -->
+            <div id="resultsCard" class="hidden bg-white rounded-3xl shadow-2xl overflow-hidden animate-slide-up">
+                <div class="bg-gray-50 border-b border-gray-200 p-6 flex justify-between items-center">
+                    <h3 class="text-xl font-bold text-gray-900">Analysis Results</h3>
+                    <button onclick="clearResults()" class="w-10 h-10 bg-white hover:bg-red-500 rounded-xl text-gray-600 hover:text-white transition-all duration-300 hover:rotate-90 shadow-sm">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div id="resultsContent" class="p-8">
+                    <!-- Results will be inserted here -->
+                </div>
             </div>
         </div>
 
-        <div class="news-fetcher">
-            <div class="news-input-wrapper">
-                <input type="text" id="newsQuery" placeholder="Enter topic (e.g., Elections, AI)">
-                <button onclick="fetchNews()">
+        <!-- News Search Section -->
+        <div class="bg-white rounded-3xl shadow-2xl p-8 mb-12">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg">
+                    <i class="fas fa-globe"></i>
+                </div>
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-900 mb-1">Real-Time News Verification</h3>
+                    <p class="text-sm text-gray-600">Search and verify latest news articles from multiple sources</p>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-4 mb-8">
+                <div class="flex-1 relative">
+                    <i class="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></i>
+                    <input 
+                        type="text" 
+                        id="newsQuery" 
+                        placeholder="Search news by topic (e.g., Technology, Politics, Health)"
+                        onkeypress="if(event.key === 'Enter') searchNews()"
+                        class="w-full pl-14 pr-6 py-4 border-2 border-gray-200 rounded-2xl text-base transition-all duration-300 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 bg-gray-50 focus:bg-white"
+                    >
+                </div>
+                <button onclick="searchNews()" class="flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-2xl font-bold text-base shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-300 hover:-translate-y-0.5 whitespace-nowrap">
                     <i class="fas fa-search"></i>
+                    <span>Search News</span>
                 </button>
             </div>
-            <div class="news-list" id="newsList">
-                <!-- News items will be added here dynamically -->
+
+            <div id="newsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- News cards will be inserted here -->
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <div class="bg-white rounded-2xl p-8 text-center shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group">
+                <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center text-white text-3xl mx-auto mb-4 shadow-lg group-hover:animate-float">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <h4 class="text-lg font-bold text-gray-900 mb-2">AI-Powered</h4>
+                <p class="text-sm text-gray-600">Advanced machine learning with 99.63% accuracy</p>
+            </div>
+            <div class="bg-white rounded-2xl p-8 text-center shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group">
+                <div class="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-700 rounded-2xl flex items-center justify-center text-white text-3xl mx-auto mb-4 shadow-lg group-hover:animate-float">
+                    <i class="fas fa-language"></i>
+                </div>
+                <h4 class="text-lg font-bold text-gray-900 mb-2">Multi-Language</h4>
+                <p class="text-sm text-gray-600">Supports English, Hindi, and Gujarati</p>
+            </div>
+            <div class="bg-white rounded-2xl p-8 text-center shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group">
+                <div class="w-16 h-16 bg-gradient-to-br from-pink-500 to-pink-700 rounded-2xl flex items-center justify-center text-white text-3xl mx-auto mb-4 shadow-lg group-hover:animate-float">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                <h4 class="text-lg font-bold text-gray-900 mb-2">Real-Time</h4>
+                <p class="text-sm text-gray-600">Instant verification and analysis</p>
+            </div>
+            <div class="bg-white rounded-2xl p-8 text-center shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 group">
+                <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-green-700 rounded-2xl flex items-center justify-center text-white text-3xl mx-auto mb-4 shadow-lg group-hover:animate-float">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h4 class="text-lg font-bold text-gray-900 mb-2">Trustworthy</h4>
+                <p class="text-sm text-gray-600">Transparent and reliable results</p>
             </div>
         </div>
     </div>
 
+    <!-- Help Modal -->
+    <div id="helpModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[1000] flex items-center justify-center p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-2xl animate-slide-up">
+            <div class="flex justify-between items-center p-6 border-b border-gray-200">
+                <h3 class="text-2xl font-bold text-gray-900">How to Use TruthGuard</h3>
+                <button onclick="closeHelp()" class="w-10 h-10 bg-gray-100 hover:bg-red-500 rounded-xl text-gray-600 hover:text-white transition-all duration-300 hover:rotate-90">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-8 space-y-6">
+                <div class="flex gap-6">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
+                        1
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-bold text-gray-900 mb-2">Paste Full Article</h4>
+                        <p class="text-gray-600">Copy and paste the complete news article (minimum 100 characters) for best results.</p>
+                    </div>
+                </div>
+                <div class="flex gap-6">
+                    <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-700 rounded-2xl flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
+                        2
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-bold text-gray-900 mb-2">Click Analyze</h4>
+                        <p class="text-gray-600">Our AI will analyze the content, language, and patterns to determine authenticity.</p>
+                    </div>
+                </div>
+                <div class="flex gap-6">
+                    <div class="w-12 h-12 bg-gradient-to-br from-pink-500 to-pink-700 rounded-2xl flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
+                        3
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-bold text-gray-900 mb-2">Review Results</h4>
+                        <p class="text-gray-600">Get detailed results including confidence score, reliability rating, and language detection.</p>
+                    </div>
+                </div>
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-xl flex gap-4">
+                    <i class="fas fa-info-circle text-blue-500 text-xl flex-shrink-0 mt-1"></i>
+                    <p class="text-gray-700"><strong class="font-bold">Note:</strong> For accurate analysis, please provide the full article text. Short headlines may not provide enough context for reliable verification.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-[2000] flex items-center justify-center">
+        <div class="text-center text-white">
+            <div class="w-16 h-16 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-6"></div>
+            <p class="text-xl font-semibold">Analyzing article...</p>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="fixed top-24 right-4 z-[3000] flex flex-col gap-4"></div>
+
+    <!-- Scripts -->
     <script src="{{ url_for('static', filename='js/fakenewsui.js') }}"></script>
 </body>
 </html>
