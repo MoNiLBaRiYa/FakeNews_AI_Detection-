@@ -36,6 +36,9 @@ pytest-cov==4.1.0
 black==24.1.1
 flake8==7.0.0
 
+# Dataset Expansion
+kaggle==1.6.6
+
 # Production
 gunicorn==21.2.0
 gevent==24.2.1

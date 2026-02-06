@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Analyze news articles and content for authenticity using TruthGuard AI's advanced fake news detection system">
+    <title>TruthGuard AI - Analyzer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+    <style>
+        :root {
+            --accent: #ec4899;
+            --dark-soft: #0b1220;
+        }
+
+        /* Floating particles */
+        .particle {
+            position: fixed;
+            width: 4px;
+            height: 4px;
+            background: rgba(99, 102, 241, 0.3);
+            border-radius: 50%;
+            z-index: 1;
+            animation: particleFloat 15s infinite;
+        }
+
+        @keyframes particleFloat {
+            0%, 100% { transform: translate(0, 0); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translate(100vw, -100vh); opacity: 0; }
+        }
+
+        /* Main Container */
+        .container {
+            position: relative;
+            z-index: 10;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 32px;
+            background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.92));
+            backdrop-filter: blur(22px);
+            border-radius: 22px;
+            border: 1px solid var(--border-soft);
+            margin-bottom: 28px;
+            box-shadow:
+                0 22px 60px rgba(15, 23, 42, 0.85),
+                0 0 0 1px rgba(15, 23, 42, 0.95);
+            animation: slideDown 0.6s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle at 30% 30%, var(--primary), var(--secondary));
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow:
+                0 0 0 1px rgba(15, 23, 42, 0.95),
+                0 16px 40px rgba(79, 70, 229, 0.65);
+        }
+
+        .logo-text h1 {
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            background: linear-gradient(125deg, #e5e7eb, #a5b4fc, #7dd3fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .logo-text p {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px;
+            background: rgba(15, 23, 42, 0.85);
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .btn {
+            padding: 11px 22px;
+            border-radius: 999px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.24s ease;
+            font-size: 13px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: radial-gradient(circle at 10% 0, #4f46e5, #6366f1);
+            color: #f9fafb;
+            box-shadow:
+                0 14px 35px rgba(79, 70, 229, 0.7),
+                0 0 0 1px rgba(15, 23, 42, 0.9);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px) scale(1.01);
+            box-shadow:
+                0 18px 45px rgba(79, 70, 229, 0.85),
+                0 0 0 1px rgba(15, 23, 42, 0.95);
+        }
+
+        .btn-secondary {
+            background: rgba(15, 23, 42, 0.85);
+            color: var(--text-main);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(30, 64, 175, 0.35);
+        }
+
+        /* Main Content */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+            animation: fadeIn 0.8s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Analyzer Section */
+        .analyzer-section {
+            background: radial-gradient(circle at top, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.94));
+            backdrop-filter: blur(22px);
+            border-radius: 22px;
+            border: 1px solid var(--border-soft);
+            padding: 32px;
+            box-shadow:
+                0 24px 70px rgba(15, 23, 42, 0.95),
+                0 0 0 1px rgba(15, 23, 42, 0.98);
+        }
+
+        .section-header {
+            margin-bottom: 30px;
+        }
+
+        .section-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .section-header p {
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .language-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 22px;
+            padding: 8px;
+            background: rgba(15, 23, 42, 0.94);
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+        }
+
+        .lang-btn {
+            flex: 1;
+            padding: 10px 12px;
+            background: transparent;
+            border: 1px solid rgba(55, 65, 81, 0.9);
+            border-radius: 999px;
+            color: rgba(209, 213, 219, 0.9);
+            cursor: pointer;
+            transition: all 0.25s ease;
+            font-weight: 500;
+            font-size: 13px;
+        }
+
+        .lang-btn.active {
+            background: radial-gradient(circle at 10% 0, #4f46e5, #6366f1);
+            color: #f9fafb;
+            border-color: transparent;
+            box-shadow:
+                0 12px 25px rgba(79, 70, 229, 0.7),
+                0 0 0 1px rgba(15, 23, 42, 0.95);
+        }
+
+        .lang-btn:hover:not(.active) {
+            background: rgba(30, 64, 175, 0.35);
+            color: #e5e7eb;
+        }
+
+        .input-area {
+            position: relative;
+            margin-bottom: 25px;
+        }
+
+        .input-area textarea {
+            width: 100%;
+            min-height: 250px;
+            padding: 18px 18px 26px 18px;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(55, 65, 81, 0.95);
+            border-radius: 14px;
+            color: var(--text-main);
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            resize: vertical;
+            transition: all 0.25s ease;
+        }
+
+        .input-area textarea:focus {
+            outline: none;
+            background: rgba(15, 23, 42, 0.98);
+            border-color: rgba(129, 140, 248, 0.95);
+            box-shadow:
+                0 0 0 1px rgba(15, 23, 42, 1),
+                0 0 0 1px rgba(99, 102, 241, 0.8),
+                0 18px 40px rgba(15, 23, 42, 0.95);
+        }
+
+        .input-area textarea::placeholder {
+            color: rgba(148, 163, 184, 0.8);
+        }
+
+        .char-counter {
+            position: absolute;
+            bottom: 12px;
+            right: 16px;
+            font-size: 11px;
+            color: rgba(148, 163, 184, 0.9);
+            background: rgba(15, 23, 42, 0.96);
+            padding: 3px 9px;
+            border-radius: 999px;
+            border: 1px solid rgba(55, 65, 81, 0.95);
+        }
+
+        .analyze-btn {
+            width: 100%;
+            padding: 15px;
+            background: radial-gradient(circle at 10% 0, #4f46e5, #6366f1);
+            border: none;
+            border-radius: 14px;
+            color: #f9fafb;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.24s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow:
+                0 18px 45px rgba(79, 70, 229, 0.85),
+                0 0 0 1px rgba(15, 23, 42, 0.95);
+        }
+
+        .analyze-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .analyze-btn:hover::before {
+            left: 100%;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-1px) scale(1.01);
+            box-shadow:
+                0 22px 55px rgba(79, 70, 229, 0.92),
+                0 0 0 1px rgba(15, 23, 42, 0.98);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Results Section */
+        .result-card {
+            margin-top: 26px;
+            padding: 26px;
+            background: rgba(15, 23, 42, 0.96);
+            border-radius: 18px;
+            border: 1px solid var(--border-soft);
+            box-shadow:
+                0 22px 55px rgba(15, 23, 42, 0.95),
+                0 0 0 1px rgba(15, 23, 42, 0.98);
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .result-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .status-icon.real {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .status-icon.fake {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        .status-text h3 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .status-text p {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .confidence-meter {
+            margin-top: 20px;
+        }
+
+        .confidence-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .confidence-bar {
+            height: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 1s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .confidence-fill.real {
+            background: linear-gradient(90deg, #10b981, #059669);
+        }
+
+        .confidence-fill.fake {
+            background: linear-gradient(90deg, #ef4444, #dc2626);
+        }
+
+        .confidence-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .confidence-description {
+            margin-top: 15px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .result-details {
+            margin-top: 20px;
+            padding: 18px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            border-left: 3px solid var(--primary);
+        }
+
+        .result-details h4 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: var(--text-main);
+        }
+
+        .result-details p {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .btn-action {
+            flex: 1;
+            padding: 12px 20px;
+            border-radius: 10px;
+            border: none;
+            background: radial-gradient(circle at 10% 0, #4f46e5, #6366f1);
+            color: #f9fafb;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.24s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(79, 70, 229, 0.5);
+        }
+
+        .btn-action.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+        }
+
+        .btn-action.secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-share {
+            padding: 10px 18px;
+            border-radius: 10px;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.24s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-share:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .info-card {
+            background: radial-gradient(circle at top, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.94));
+            backdrop-filter: blur(22px);
+            border-radius: 22px;
+            border: 1px solid var(--border-soft);
+            padding: 26px;
+            box-shadow:
+                0 24px 70px rgba(15, 23, 42, 0.95),
+                0 0 0 1px rgba(15, 23, 42, 0.98);
+        }
+
+        .info-card h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .stat-box {
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .tips-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .tip-item {
+            display: flex;
+            gap: 12px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border-left: 3px solid var(--primary);
+        }
+
+        .tip-icon {
+            font-size: 18px;
+            color: var(--primary);
+        }
+
+        .tip-text {
+            font-size: 12px;
+            color: rgba(209, 213, 219, 0.88);
+            line-height: 1.5;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-container"></div>
+    <div class="grid-bg"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo-section">
+                <div class="logo-icon">🛡️</div>
+                <div class="logo-text">
+                    <h1>TruthGuard AI</h1>
+                    <p>Advanced Fake News Detection</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                        <button class="btn btn-secondary" onclick="window.location.href='/threat-map'" aria-label="View global threat map">
+                    <i class="fas fa-globe" aria-hidden="true"></i> Threat Map
+                </button>
+                <div class="user-info">
+                    <div class="user-avatar">👤</div>
+                    <span style="font-size: 13px; color: var(--text-main);">User</span>
+                </div>
+                <button class="btn btn-secondary" onclick="handleLogout()" aria-label="Logout from account">
+                    <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Analyzer Section -->
+            <div class="analyzer-section">
+                <div class="section-header">
+                    <h2>Analyze Content</h2>
+                    <p>Enter text or headline to verify its authenticity</p>
+                </div>
+
+                <form id="analyzeForm" method="POST" action="/analyze">
+                    <!-- Language Selector -->
+                    <div class="language-selector">
+                        <button type="button" class="lang-btn active" data-lang="english" aria-label="Select English language">
+                            🇬🇧 English
+                        </button>
+                        <button type="button" class="lang-btn" data-lang="hindi" aria-label="Select Hindi language">
+                            🇮🇳 Hindi
+                        </button>
+                        <button type="button" class="lang-btn" data-lang="gujarati" aria-label="Select Gujarati language">
+                            🇮🇳 Gujarati
+                        </button>
+                    </div>
+
+                    <input type="hidden" name="language" id="languageInput" value="english">
+
+                    <!-- Text Input -->
+                    <div class="input-area">
+                        <textarea 
+                            name="text" 
+                            id="textInput" 
+                            placeholder="Paste news article, headline, or any text content here for analysis..."
+                            required
+                            aria-label="Text input for fake news analysis"
+                            minlength="10"
+                            maxlength="10000"
+                        ></textarea>
+                        <div class="char-counter">
+                            <span id="charCount">0</span> characters
+                        </div>
+                    </div>
+
+                    <button type="submit" class="analyze-btn" aria-label="Analyze content for fake news detection">
+                        <i class="fas fa-search" aria-hidden="true"></i> Analyze Content
+                    </button>
+                </form>
+
+                <!-- Results -->
+                {% if result %}
+                {% set is_real = (result.prediction == 'Real News') %}
+                <div class="result-card">
+                    <div class="result-header">
+                        <div class="result-status">
+                            <div class="status-icon {{ 'real' if is_real else 'fake' }}">
+                                {{ '✓' if is_real else '✗' }}
+                            </div>
+                            <div class="status-text">
+                                <h3>{{ result.prediction }}</h3>
+                                <p>Analysis completed successfully</p>
+                            </div>
+                        </div>
+                        <button class="btn-share" onclick="shareResult()" aria-label="Share analysis result">
+                            <i class="fas fa-share-alt" aria-hidden="true"></i> Share
+                        </button>
+                    </div>
+
+                    <div class="confidence-meter">
+                        <div class="confidence-label">
+                            <span>Confidence Level</span>
+                            <span><strong>{{ "%.1f"|format(result.confidence) }}%</strong></span>
+                        </div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill {{ 'real' if is_real else 'fake' }}" 
+                                 style="width: {{ result.confidence }}%">
+                            </div>
+                        </div>
+                        <div class="confidence-description">
+                            {% if result.confidence >= 90 %}
+                            <p>Very high confidence - The model is highly certain about this prediction.</p>
+                            {% elif result.confidence >= 75 %}
+                            <p>High confidence - The model is reasonably certain about this prediction.</p>
+                            {% elif result.confidence >= 60 %}
+                            <p>Moderate confidence - Consider verifying with additional sources.</p>
+                            {% else %}
+                            <p>Low confidence - Please verify with multiple trusted sources.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="result-details">
+                        <h4>Why This Looks {{ 'Real' if is_real else 'Fake' }}</h4>
+                        <p>{{ result.reason }}</p>
+
+                        <h4 style="margin-top: 14px;">Source</h4>
+                        <p>
+                            {% if result.source_label %}
+                                {% if result.source_url %}
+                                    <a href="{{ result.source_url }}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline;">
+                                        {{ result.source_label }}
+                                    </a>
+                                {% else %}
+                                    {{ result.source_label }}
+                                {% endif %}
+                            {% else %}
+                                Unknown
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <div class="result-actions">
+                        <button class="btn-action" onclick="analyzeAnother()" aria-label="Analyze another content">
+                            <i class="fas fa-redo" aria-hidden="true"></i> Analyze Another
+                        </button>
+                        <button class="btn-action secondary" onclick="viewDetails()" aria-label="View detailed analysis">
+                            <i class="fas fa-info-circle" aria-hidden="true"></i> View Details
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <!-- Stats Card -->
+                <div class="info-card">
+                    <h3>Model Statistics</h3>
+                    <div class="stat-grid">
+                        <div class="stat-box">
+                            <div class="stat-value">99.6%</div>
+                            <div class="stat-label">Accuracy</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">3</div>
+                            <div class="stat-label">Languages</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">Fast</div>
+                            <div class="stat-label">Analysis</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">AI</div>
+                            <div class="stat-label">Powered</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tips Card -->
+                <div class="info-card">
+                    <h3>Detection Tips</h3>
+                    <div class="tips-list">
+                        <div class="tip-item">
+                            <div class="tip-icon">💡</div>
+                            <div class="tip-text">
+                                Longer text provides more accurate results
+                            </div>
+                        </div>
+                        <div class="tip-item">
+                            <div class="tip-icon">🔍</div>
+                            <div class="tip-text">
+                                Check multiple sources for verification
+                            </div>
+                        </div>
+                        <div class="tip-item">
+                            <div class="tip-icon">⚡</div>
+                            <div class="tip-text">
+                                Real-time analysis with instant results
+                            </div>
+                        </div>
+                        <div class="tip-item">
+                            <div class="tip-icon">🌐</div>
+                            <div class="tip-text">
+                                Supports English, Hindi, and Gujarati
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <script>
+        // Create floating particles
+        for (let i = 0; i < 20; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDelay = Math.random() * 15 + 's';
+            particle.style.animationDuration = (Math.random() * 10 + 10) + 's';
+            document.body.appendChild(particle);
+        }
+
+        // Language selector
+        const langButtons = document.querySelectorAll('.lang-btn');
+        const languageInput = document.getElementById('languageInput');
+
+        langButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                langButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                languageInput.value = btn.dataset.lang;
+            });
+        });
+
+        // Character counter
+        const textInput = document.getElementById('textInput');
+        const charCount = document.getElementById('charCount');
+
+        textInput.addEventListener('input', () => {
+            charCount.textContent = textInput.value.length;
+        });
+
+        // Form submission
+        const form = document.getElementById('analyzeForm');
+        const analyzeBtn = form.querySelector('.analyze-btn');
+
+        form.addEventListener('submit', (e) => {
+            const textValue = textInput.value.trim();
+            if (textValue.length < 10) {
+                e.preventDefault();
+                alert('Please enter at least 10 characters for analysis.');
+                return;
+            }
+            if (textValue.length > 10000) {
+                e.preventDefault();
+                alert('Text is too long. Maximum 10,000 characters allowed.');
+                return;
+            }
+            analyzeBtn.disabled = true;
+            analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+        });
+
+        // Logout handler
+        function handleLogout() {
+            if (confirm('Are you sure you want to logout?')) {
+                fetch('/logout', { method: 'POST' })
+                    .then(() => window.location.href = '/')
+                    .catch(() => window.location.href = '/');
+            }
+        }
+
+        // Share result
+        function shareResult() {
+            const resultText = document.querySelector('.status-text h3')?.textContent || 'Analysis Result';
+            const confidence = document.querySelector('.confidence-label strong')?.textContent || 'N/A';
+            const shareText = `TruthGuard AI Analysis: ${resultText} (Confidence: ${confidence})`;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'TruthGuard AI Analysis',
+                    text: shareText,
+                    url: window.location.href
+                }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(shareText).then(() => {
+                    alert('Result copied to clipboard!');
+                });
+            }
+        }
+
+        // Analyze another
+        function analyzeAnother() {
+            document.getElementById('textInput').value = '';
+            document.getElementById('charCount').textContent = '0';
+            document.querySelector('.result-card')?.remove();
+            document.getElementById('textInput').focus();
+        }
+
+        // Detailed view data injected from server for last analysis
+        const analyzedResult = {% if result %}{{ result|tojson|safe }}{% else %}null{% endif %};
+
+        // View details: show full analyzed text and detected source
+        function viewDetails() {
+            if (!analyzedResult) {
+                alert('No analysis details are available yet. Please analyze some content first.');
+                return;
+            }
+            const text = (analyzedResult.text || '').trim();
+            const sourceLabel = (analyzedResult.source_label || '').trim();
+            const sourceUrl = (analyzedResult.source_url || '').trim();
+            const language = analyzedResult.language || document.getElementById('languageInput')?.value || 'unknown';
+            const length = text.length;
+
+            let message = 'Detailed analysis report:\n\n';
+            if (sourceLabel) {
+                message += 'Source: ' + sourceLabel + (sourceUrl ? ' [' + sourceUrl + ']' : '') + '\n\n';
+            } else {
+                message += 'Source: Unknown\n\n';
+            }
+            message += '- Text length: ' + length + ' characters\n';
+            message += '- Language: ' + language + '\n';
+            message += '- Model: TruthGuard AI v3.2\n';
+            message += '- Analysis time: < 1 second\n\n';
+
+            if (text) {
+                message += 'Full content:\n\n' + text;
+            } else {
+                message += 'No full text is available for this analysis.';
+            }
+
+            alert(message);
+        }
+    </script>
+</body>
+</html>
