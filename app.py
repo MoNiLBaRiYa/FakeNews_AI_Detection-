@@ -1,9 +1,12 @@
-from flask import Flask, jsonify, request, render_template
+from flask import Flask, jsonify, request, render_template, session, redirect, url_for
+from functools import wraps
 import joblib
-from Backend.FND import fetch_and_predict_news, predict_news, find_article_source  # Import from Backend
+from Backend.FND import fetch_and_predict_news, predict_news, predict_news_with_details, find_article_source  # Import from Backend
 from pymongo import MongoClient
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
+import re
+from config import config
 
 # Serve templates + static assets from the Frontend folder (prevents "white body"
 # when `/static/css/common.css` fails to load).
@@ -14,40 +17,30 @@ app = Flask(
     static_url_path="/static",
 )
 
+# Load configuration
+env = os.getenv('FLASK_ENV', 'development')
+app.config.from_object(config.get(env, config['default']))
+app.secret_key = app.config.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+
 # MongoDB Connection with error handling
 try:
-    client = MongoClient('mongodb://127.0.0.1:27017/')
-    db = client['user_auth_db']
+    client = MongoClient(app.config.get('MONGODB_URI', 'mongodb://127.0.0.1:27017/'))
+    db = client[app.config.get('DATABASE_NAME', 'user_auth_db')]
     users = db['users']
 except Exception as e:
     print(f"Error connecting to MongoDB: {e}")
     users = None
 
-# Load trained models with error handling (DUAL MODEL APPROACH)
-model_article = None  # For full articles
-model_headline = None  # For headlines
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            if request.is_json:
+                return jsonify({'error': 'Authentication required'}), 401
+            return redirect(url_for('home'))
+        return f(*args, **kwargs)
+    return decorated_function
 
-try:
-    # Load article model
-    model_path = os.path.join(os.path.dirname(__file__), "Model", "model_improved.pkl")
-    if os.path.exists(model_path):
-        model_article = joblib.load(model_path)
-        print("✅ Article model loaded (99.63% accuracy)")
-    else:
-        model_path = os.path.join(os.path.dirname(__file__), "Model", "model.pkl")
-        model_article = joblib.load(model_path)
-        print("✅ Article model loaded (94.25% accuracy)")
-except Exception as e:
-    print(f"Error loading article model: {e}")
-
-try:
-    # Load headline model
-    headline_path = os.path.join(os.path.dirname(__file__), "Model", "model_headlines.pkl")
-    if os.path.exists(headline_path):
-        model_headline = joblib.load(headline_path)
-        print("✅ Headline model loaded (95.24% accuracy)")
-except Exception as e:
-    print(f"Error loading headline model: {e}")
 
 # Email validation function
 def is_valid_email(email):
@@ -73,6 +66,8 @@ def favicon():
 # Route: Signup
 @app.route('/signup', methods=['POST'])
 def signup():
+    if getattr(app, 'users', users) is None:
+         return jsonify({'message': 'Database service unavailable'}), 500
     data = request.json
     email = data.get('email')
     password = data.get('password')
@@ -95,6 +90,8 @@ def signup():
 #  Route: Login
 @app.route('/login', methods=['POST'])
 def login():
+    if getattr(app, 'users', users) is None:
+         return jsonify({'message': 'Database service unavailable'}), 500
     data = request.json
     email_or_username = data.get('email')
     password = data.get('password')
@@ -103,12 +100,16 @@ def login():
     user = users.find_one({'$or': [{'email': email_or_username}, {'username': email_or_username}]})
     
     if user and check_password_hash(user['password'], password):
+        session['user_id'] = str(user['_id'])
+        session['username'] = user.get('username', email_or_username)
         return jsonify({'message': 'Login successful'})
     return jsonify({'message': 'Invalid email or password'}), 401
 
 #  Route: Forgot Password
 @app.route('/forgot_password', methods=['POST'])
 def forgot_password():
+    if getattr(app, 'users', users) is None:
+         return jsonify({'message': 'Database service unavailable'}), 500
     data = request.json
     email = data.get('email')
 
@@ -120,20 +121,24 @@ def forgot_password():
 # Route: Logout
 @app.route('/logout', methods=['POST'])
 def logout():
+    session.clear()
     return jsonify({'message': 'Logged out successfully'}), 200
 
 # Route: Dashboard
 @app.route('/dashboard')
+@login_required
 def dashboard():
     return render_template('dashboard.html')
 
 # Route: Fake News Detection Page
 @app.route('/fakenews')
+@login_required
 def fakenews():
     return render_template('truthguard_new.html')
 
 # Route: Analyzer (alias for fakenews)
 @app.route('/analyzer')
+@login_required
 def analyzer():
     return render_template('truthguard_new.html')
 
@@ -147,54 +152,12 @@ def analyze():
         return render_template('truthguard_new.html', error='No text provided')
     
     try:
-        # Use the prediction function
-        result = predict_news(text)
+        # Use the improved prediction function
+        details = predict_news_with_details(text)
+        result = details['prediction']
+        confidence = details['confidence']
+        reason = details['reason']
 
-        # Get confidence
-        import re
-        text_clean = text.lower()
-        text_clean = re.sub(r'https?://\S+|www\.\S+', '', text_clean)
-        text_clean = re.sub(r'<.*?>', '', text_clean)
-        text_clean = re.sub(r'\S+@\S+', '', text_clean)
-
-        char_count = len(text_clean)
-        selected_model = model_headline if char_count < 300 and model_headline else model_article
-
-        if selected_model is not None:
-            proba = selected_model.predict_proba([text_clean])[0]
-            confidence = round(max(proba) * 100, 2)
-        else:
-            confidence = 85.0
-
-        # Simple human-readable rationale
-        is_real = (result == "Real News")
-        if is_real:
-            if confidence >= 90:
-                reason = (
-                    "The content uses neutral, factual language, mentions concrete details, "
-                    "and lacks strong sensational phrases or formatting patterns that the model "
-                    "has learned to associate with misinformation."
-                )
-            else:
-                reason = (
-                    "The content partly matches patterns of reliable reporting (neutral tone, some "
-                    "specific details), and the model leans towards it being real, but confidence "
-                    "is not extremely high so you should still verify with trusted sources."
-                )
-        else:
-            if confidence >= 90:
-                reason = (
-                    "The content contains wording and structural patterns strongly associated with "
-                    "misinformation in the training data such as sensational or exaggerated claims, "
-                    "uncertain sourcing, or emotionally charged language."
-                )
-            else:
-                reason = (
-                    "The model detected several signals that often appear in misinformation "
-                    "(for example, very strong emotional or sensational wording, limited sourcing, "
-                    "or unusual formatting), but the confidence is moderate, so treat this as a warning "
-                    "and double-check with fact-checking sites."
-                )
 
         # Try to detect a source URL from the original text (first URL wins)
         url_matches = re.findall(r'https?://\S+|www\.\S+', text)
@@ -244,50 +207,13 @@ def predict():
         return jsonify({'error': 'No text provided'}), 400
 
     try:
-        # Use the SAME prediction function as news search for consistency
-        result = predict_news(text)
-        
-        # Get prediction probabilities for confidence
-        try:
-            # Basic cleaning for model
-            import re
-            text_clean = text.lower()
-            text_clean = re.sub(r'https?://\S+|www\.\S+', '', text_clean)
-            text_clean = re.sub(r'<.*?>', '', text_clean)
-            text_clean = re.sub(r'\S+@\S+', '', text_clean)
-            
-            # Select appropriate model based on text length
-            char_count = len(text_clean)
-            selected_model = model_headline if char_count < 300 and model_headline else model_article
-            
-            if selected_model is not None:
-                proba = selected_model.predict_proba([text_clean])[0]
-                confidence = round(max(proba) * 100, 2)
-            else:
-                confidence = 85.0
-        except:
-            # Fallback confidence based on text characteristics
-            if len(text) > 200:
-                confidence = 92.0
-            elif len(text) > 100:
-                confidence = 85.0
-            else:
-                confidence = 75.0
-        
-        # Calculate reliability based on confidence
-        if confidence >= 90:
-            reliability = "High"
-        elif confidence >= 75:
-            reliability = "Medium"
-        else:
-            reliability = "Low"
-        
-        # Detect language (simple detection)
-        language_name = "English"
-        if any(ord(char) >= 0x0900 and ord(char) <= 0x097F for char in text):
-            language_name = "Hindi"
-        elif any(ord(char) >= 0x0A80 and ord(char) <= 0x0AFF for char in text):
-            language_name = "Gujarati"
+        # Use the improved detailed prediction function
+        details = predict_news_with_details(text)
+        result = details['prediction']
+        confidence = details['confidence']
+        reliability = details['reliability']
+        language_name = details['language_name']
+
         
         return jsonify({
             'prediction': result,
@@ -303,34 +229,38 @@ def predict():
 #  Route: Fetch Real-Time News (Dynamic Query-Based with City-Level Location and Language Support)
 @app.route('/fetch_news', methods=['GET'])
 def fetch_news():
-    query = request.args.get("query", "latest")  # Get query from URL
-    region = request.args.get("region", "")  # Get region (gujarat/india/international)
-    city = request.args.get("city", "")  # Get city name (Ahmedabad, Somnath, Vadodara, etc.)
-    state = request.args.get("state", "")  # Get state name
-    lat = request.args.get("lat", "")  # Get latitude
-    lon = request.args.get("lon", "")  # Get longitude
-    language = request.args.get("language", "en")  # Get preferred language (en, hi, gu)
+    query = request.args.get("query", "latest")
+    region = request.args.get("region", "")
+    city = request.args.get("city", "")
+    district = request.args.get("district", "")
+    state = request.args.get("state", "")
+    lat = request.args.get("lat", "")
+    lon = request.args.get("lon", "")
+    language = request.args.get("language", "en")
     
-    # Priority 1: City-specific news (most accurate)
-    if city and city not in ["latest", "news", "gujarat", "india", "international"]:
-        # Enhance query with city name for hyperlocal news
-        enhanced_query = f"{city} {state} news"
-        if query not in ["latest", city.lower()]:
-            enhanced_query = f"{query} {city} {state}"
+    try:
+        # Priority 1: City-specific news (most accurate)
+        if city and city not in ["latest", "news", "gujarat", "india", "international"]:
+            # Enhance query with city name for hyperlocal news
+            enhanced_query = f"{city} {district} {state} news".strip()
+            if query not in ["latest", city.lower()]:
+                enhanced_query = f"{query} {city} {district} {state}".strip()
+            
+            print(f"[NEWS] Fetching localized news for: {city}, {district}, {state} in {language}")
+            return jsonify(fetch_and_predict_news(enhanced_query, region, city, state, language, district))
         
-        print(f"🎯 Fetching city-specific news for: {city}, {state} in {language}")
-        return jsonify(fetch_and_predict_news(enhanced_query, region, city, state, language))
-    
-    # Priority 2: Region-based news
-    if region:
-        if region.lower() == "gujarat":
-            query = f"{query} Gujarat" if query not in ["latest", "gujarat"] else "Gujarat news"
-        elif region.lower() == "india":
-            query = f"{query} India" if query not in ["latest", "india"] else "India news"
-        elif region.lower() == "international":
-            query = f"{query} world international" if query not in ["latest", "international"] else "world news"
-    
-    return jsonify(fetch_and_predict_news(query, region, city, state, language))
+        # Priority 2: Region-based news
+        if region:
+            if region.lower() == "gujarat":
+                query = f"{query} Gujarat" if query not in ["latest", "gujarat"] else "Gujarat news"
+            elif region.lower() == "india":
+                query = f"{query} India" if query not in ["latest", "india"] else "India news"
+            elif region.lower() == "international":
+                query = f"{query} world international" if query not in ["latest", "international"] else "world news"
+        
+        return jsonify(fetch_and_predict_news(query, region, city, state, language, district))
+    except Exception as e:
+        return jsonify({'error': f'Analysis error: {str(e)}', 'news': [], 'predictions': []}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

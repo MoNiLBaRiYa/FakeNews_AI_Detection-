@@ -1,0 +1,12 @@
+{
+  "name": "truthguard-ui",
+  "version": "1.0.0",
+  "description": "Tailwind CSS configuration for TruthGuard fake news project",
+  "scripts": {
+    "build:css": "tailwindcss -i ./static/css/styles.css -o ./static/css/output.css",
+    "watch:css": "tailwindcss -i ./static/css/styles.css -o ./static/css/output.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.1"
+  }
+}

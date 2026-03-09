@@ -103,3 +103,11 @@ docs/_build/
 # Duplicate folders (old project)
 Minor-Project-/
 templates/chat.html
+
+# Node modules
+node_modules/
+package-lock.json
+
+# Test files
+test*.py
+test*.json

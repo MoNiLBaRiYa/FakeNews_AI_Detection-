@@ -16,9 +16,9 @@ load_dotenv(dotenv_path=env_path)
 
 # Debug: Print if .env was found
 if env_path.exists():
-    print(f"✓ Loaded .env from: {env_path}")
+    print(f"[OK] Loaded .env from: {env_path}")
 else:
-    print(f"⚠ Warning: .env file not found at {env_path}")
+    print(f"[WARNING] .env file not found at {env_path}")
 
 class Config:
     """Base configuration."""

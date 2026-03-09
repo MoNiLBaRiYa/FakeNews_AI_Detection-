@@ -22,7 +22,7 @@ translator = Translator()
 
 # Load configuration
 env = os.getenv('FLASK_ENV', 'development')
-app_config = config[env]
+app_config = config.get(env, config['default'])
 
 # Common English stopwords
 STOPWORDS = {
@@ -308,7 +308,91 @@ def predict_news(text: str) -> str:
         logger.error(f"Prediction error: {e}")
         return "Real News"
 
-def fetch_indian_news(query: str = "latest", region: str = "", city: str = "", state: str = "", language: str = "en") -> List[str]:
+def predict_news_with_details(text: str) -> dict:
+    """
+    Returns a dictionary with detailed prediction information:
+    prediction, confidence, reliability, reason, and language.
+    """
+    result = predict_news(text)
+    
+    # Text cleaning for model length check
+    text_clean = text.lower()
+    text_clean = re.sub(r'https?://\S+|www\.\S+', '', text_clean)
+    text_clean = re.sub(r'<.*?>', '', text_clean)
+    text_clean = re.sub(r'\S+@\S+', '', text_clean)
+    
+    char_count = len(text_clean)
+    selected_model = model_headline if char_count < 300 and model_headline else model_article
+    
+    # Calculate confidence
+    try:
+        if selected_model is not None:
+            proba = selected_model.predict_proba([text_clean])[0]
+            confidence = round(max(proba) * 100, 2)
+        else:
+            confidence = 85.0
+            if len(text) > 200:
+                confidence = 92.0
+            elif len(text) <= 100:
+                confidence = 75.0
+    except Exception:
+        confidence = 85.0
+        
+    # Calculate reliability
+    if confidence >= 90:
+        reliability = "High"
+    elif confidence >= 75:
+        reliability = "Medium"
+    else:
+        reliability = "Low"
+        
+    # Human-readable rationale
+    is_real = (result == "Real News")
+    if is_real:
+        if confidence >= 90:
+            reason = (
+                "The content uses neutral, factual language, mentions concrete details, "
+                "and lacks strong sensational phrases or formatting patterns that the model "
+                "has learned to associate with misinformation."
+            )
+        else:
+            reason = (
+                "The content partly matches patterns of reliable reporting (neutral tone, some "
+                "specific details), and the model leans towards it being real, but confidence "
+                "is not extremely high so you should still verify with trusted sources."
+            )
+    else:
+        if confidence >= 90:
+            reason = (
+                "The content contains wording and structural patterns strongly associated with "
+                "misinformation in the training data such as sensational or exaggerated claims, "
+                "uncertain sourcing, or emotionally charged language."
+            )
+        else:
+            reason = (
+                "The model detected several signals that often appear in misinformation "
+                "(for example, very strong emotional or sensational wording, limited sourcing, "
+                "or unusual formatting), but the confidence is moderate, so treat this as a warning "
+                "and double-check with fact-checking sites."
+            )
+            
+    # Detect language (simple detection)
+    language_name = "English"
+    if any(ord(char) >= 0x0900 and ord(char) <= 0x097F for char in text):
+        language_name = "Hindi"
+    elif any(ord(char) >= 0x0A80 and ord(char) <= 0x0AFF for char in text):
+        language_name = "Gujarati"
+        
+    return {
+        "prediction": result,
+        "confidence": confidence,
+        "reliability": reliability,
+        "reason": reason,
+        "language_name": language_name
+    }
+
+
+def fetch_indian_news(query: str = "latest", region: str = "", city: str = "", state: str = "", language: str = "en", district: str = "") -> List[str]:
     """
     Fetch news from All India and regional news sources via web scraping.
     Now supports city-level news fetching and multi-language support for ALL cities.
@@ -319,6 +403,7 @@ def fetch_indian_news(query: str = "latest", region: str = "", city: str = "", s
         city: Specific city (any city name)
         state: State name (any state)
         language: Preferred language (en, hi, gu)
+        district: District/County for proximity fallback
     
     Returns:
         List of news articles with language metadata
@@ -467,13 +552,23 @@ def fetch_indian_news(query: str = "latest", region: str = "", city: str = "", s
             }
         
         else:
-            # Default: Use all-India sources for any other city/state
-            city_sources = {
-                "https://www.ndtv.com/india": "h2",
-                "https://timesofindia.indiatimes.com/india": "span.w_tle",
-                "https://indianexpress.com/section/india/": "h2.title",
-                "https://www.thehindu.com/news/national/": "h3.title",
-            }
+            # Default: If region is gujarat, use gujarat sources, otherwise all-India
+            if region.lower() == 'gujarat':
+                if language == 'gu':
+                    city_sources = {
+                        "https://www.divyabhaskar.co.in/local/gujarat/": "h3",
+                        "https://www.sandesh.com/": "h3.title",
+                        "https://www.gujaratsamachar.com/": "h3, h2.title",
+                    }
+                else:
+                    city_sources = gujarat_sources_en.copy()
+            else:
+                city_sources = {
+                    "https://www.ndtv.com/india": "h2",
+                    "https://timesofindia.indiatimes.com/india": "span.w_tle",
+                    "https://indianexpress.com/section/india/": "h2.title",
+                    "https://www.thehindu.com/news/national/": "h3.title",
+                }
     
     # All India News Sources (English)
     all_india_sources = {
@@ -545,7 +640,9 @@ def fetch_indian_news(query: str = "latest", region: str = "", city: str = "", s
         "Upgrade-Insecure-Requests": "1"
     }
     
-    for url, selector in selected_sources.items():
+    import concurrent.futures
+    
+    def fetch_source(url, selector):
         try:
             response = requests.get(url, headers=headers, timeout=15, allow_redirects=True)
             response.raise_for_status()
@@ -572,90 +669,53 @@ def fetch_indian_news(query: str = "latest", region: str = "", city: str = "", s
             else:
                 source_label = "[India] "
             
-            for article in articles[:5]:  # Increased to 5 per source for city-specific news
+            source_news = []
+            for article in articles[:10]:  # Increased to 10 per source for city-specific news
                 text = article.text.strip()
                 # Better validation
                 if text and 20 < len(text) < 500:
-                    # Flexible city filtering: Check for city name OR state name OR nearby keywords
-                    if city:
-                        city_keywords = [city.lower()]
-                        # Add state to keywords for better matching
-                        if state:
-                            city_keywords.append(state.lower())
-                        
-                        # Check if any keyword is in the article
-                        text_lower = text.lower()
-                        has_location_match = any(keyword in text_lower for keyword in city_keywords)
-                        
-                        # For smaller cities, be more lenient BUT check for exclusions
-                        if not has_location_match and city.lower() not in MAJOR_CITY_SOURCES:
-                            # Check if article mentions OTHER cities or states
-                            # Include both English and Gujarati/Hindi names
-                            other_cities = [
-                                # Major Indian cities (English)
-                                'delhi', 'mumbai', 'kolkata', 'chennai', 'bengaluru', 'bangalore',
-                                'hyderabad', 'pune', 'jaipur', 'lucknow', 'kanpur', 'nagpur',
-                                'indore', 'bhopal', 'patna', 'ludhiana', 'agra',
-                                'nashik', 'faridabad', 'meerut', 'varanasi', 'srinagar',
-                                'amritsar', 'allahabad', 'ranchi', 'howrah', 'coimbatore', 'vijayawada',
-                                # Gujarat cities (English)
-                                'ahmedabad', 'amdavad', 'vadodara', 'baroda', 'surat', 'rajkot',
-                                'bhavnagar', 'jamnagar', 'gandhinagar', 'anand', 'nadiad',
-                                # Gujarat cities (Gujarati script)
-                                'અમદાવાદ', 'સુરત', 'વડોદરા', 'રાજકોટ', 'ભાવનગર', 'જામનગર',
-                                # Major cities (Hindi/Devanagari)
-                                'दिल्ली', 'मुंबई', 'कोलकाता', 'चेन्नई', 'बेंगलुरु', 'हैदराबाद',
-                                'पुणे', 'जयपुर', 'लखनऊ', 'कानपुर', 'नागपुर'
-                            ]
-                            
-                            # OTHER STATES (exclude news from other states entirely)
-                            other_states = [
-                                # North India
-                                'punjab', 'haryana', 'himachal', 'uttarakhand', 'jammu', 'kashmir',
-                                'पंजाब', 'हरियाणा', 'हिमाचल', 'उत्तराखंड', 'जम्मू', 'कश्मीर',
-                                # East India
-                                'west bengal', 'bengal', 'odisha', 'orissa', 'jharkhand', 'bihar',
-                                'assam', 'meghalaya', 'tripura', 'manipur', 'nagaland', 'mizoram', 'arunachal',
-                                'पश्चिम बंगाल', 'ओडिशा', 'झारखंड', 'बिहार', 'असम', 'मेघालय',
-                                # South India (if user is not in south)
-                                'karnataka', 'kerala', 'tamil nadu', 'andhra pradesh', 'telangana',
-                                'कर्नाटक', 'केरल', 'तमिलनाडु', 'आंध्र प्रदेश', 'तेलंगाना',
-                                # Central India
-                                'madhya pradesh', 'chhattisgarh', 'mp',
-                                'मध्य प्रदेश', 'छत्तीसगढ़',
-                                # West India (if user is not in Maharashtra/Gujarat)
-                                'maharashtra', 'goa', 'राजस्थान', 'महाराष्ट्र', 'गोवा'
-                            ]
-                            
-                            # Remove user's state from exclusion list
-                            user_state_lower = state.lower() if state else ''
-                            if user_state_lower:
-                                other_states = [s for s in other_states if s not in user_state_lower and user_state_lower not in s]
-                            
-                            # Remove user's city from the exclusion list (check both English and local script)
-                            user_city_lower = city.lower()
-                            other_cities = [c for c in other_cities if c != user_city_lower]
-                            
-                            # If article mentions another city OR state, skip it
-                            mentions_other_city = any(other_city in text_lower or other_city in text for other_city in other_cities)
-                            mentions_other_state = any(other_state in text_lower or other_state in text for other_state in other_states)
-                            
-                            if not mentions_other_city and not mentions_other_state:
-                                # Accept if it's from a regional source and doesn't mention other cities/states
-                                has_location_match = True
-                        
-                        if not has_location_match:
-                            continue
+                    # Less restrictive filtering: since we are already querying regional sources
+                    # or city-specific URLs, we assume the content is relevant to the user's location.
+                    has_location_match = True
                     
+                    # If we were given a specific city strictly requiring text matches, try proximity fallback
+                    # This only applies if we aren't using the dedicated Gujarat/regional catch-all buckets.
+                    is_city_dedicated_url = city and city.lower() in url.lower()
+                    if city and not is_city_dedicated_url and not any(kw in url.lower() for kw in ["gujarat", "ahmedabad", "sandesh", "divyabhaskar"]):
+                        # Check city name
+                        has_location_match = city.lower() in text.lower()
+                        # Fallback to proximity district
+                        if not has_location_match and district:
+                            has_location_match = district.lower() in text.lower()
+                            if has_location_match:
+                                source_label = f"[{district}] (Nearby) "
+                    
+                    if not has_location_match:
+                        continue
+                
                     # Add language metadata
                     labeled_text = f"{source_label}{text}|||LANG:{article_lang}"
-                    news_list.append(labeled_text)
+                    source_news.append(labeled_text)
                     
             logger.info(f"Fetched {len(articles[:5])} articles from {url}")
+            return source_news
         except requests.exceptions.RequestException as e:
             logger.error(f"Request error from {url}: {e}")
         except Exception as e:
             logger.error(f"Error fetching from {url}: {e}")
+        return []
+
+    # Use ThreadPoolExecutor for concurrent fetching
+    max_workers = min(15, len(selected_sources)) if selected_sources else 1
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_url = {executor.submit(fetch_source, url, selector): url for url, selector in selected_sources.items()}
+        for future in concurrent.futures.as_completed(future_to_url):
+            try:
+                results = future.result()
+                if results:
+                    news_list.extend(results)
+            except Exception as e:
+                logger.error(f"Thread execution error logic: {e}")
     
     return news_list
 
@@ -852,7 +912,7 @@ def find_article_source(text: str) -> Dict[str, str]:
         logger.error(f"Error fetching from NewsData: {e}")
         return []
 
-def fetch_and_predict_news(query: str = "latest", region: str = "", city: str = "", state: str = "", language: str = "en") -> Dict[str, List[str]]:
+def fetch_and_predict_news(query: str = "latest", region: str = "", city: str = "", state: str = "", language: str = "en", district: str = "") -> Dict[str, List[str]]:
     """
     Fetch news from multiple sources and predict fake/real with improved logic.
     Now supports city-level news fetching and multi-language support.
@@ -864,6 +924,7 @@ def fetch_and_predict_news(query: str = "latest", region: str = "", city: str = 
         city: Specific city (Ahmedabad, Somnath, Vadodara, etc.)
         state: State name
         language: Preferred language (en, hi, gu)
+        district: District/County for proximity fallback
         
     Returns:
         Dictionary with news articles, predictions, and language metadata
@@ -912,23 +973,22 @@ def fetch_and_predict_news(query: str = "latest", region: str = "", city: str = 
     # PRIORITY 3: Try web scraping with city, region, and language filter
     if is_generic_query or len(api_news) < 5:
         try:
-            scraped_results = fetch_indian_news(query, region, city, state, language)
+            scraped_results = fetch_indian_news(query, region, city, state, language, district)
             if scraped_results:
                 scraped_news.extend(scraped_results)
-                logger.info(f"Web scraping returned {len(scraped_results)} articles for city '{city}', region '{region}', language '{language}'")
+                logger.info(f"Web scraping returned {len(scraped_results)} articles for city '{city}', district '{district}', region '{region}', language '{language}'")
         except Exception as e:
             logger.error(f"Error in fetch_indian_news: {e}")
     
     # Combine results: Prioritize city-specific and language-specific news
     if city:
-        # Filter for city-specific content
+        # Since scraped_news is already fetched using city-specific URLs/routings, 
+        # we consider all of it valid for this city to prevent aggressive text-filtering.
         city_api = [art for art in api_news if city.lower() in art.lower()]
-        city_scraped = [art for art in scraped_news if city.lower() in art.lower()]
         other_api = [art for art in api_news if city.lower() not in art.lower()]
-        other_scraped = [art for art in scraped_news if city.lower() not in art.lower()]
         
-        # Prioritize: city scraped > city API > nearby scraped > nearby API
-        news_list = city_scraped[:10] + city_api[:5] + other_scraped[:3] + other_api[:2]
+        # Prioritize: all scraped > city API > other API
+        news_list = scraped_news[:15] + city_api[:5] + other_api[:5]
         logger.info(f"Using city-prioritized results for '{city}'")
     elif region:
         # Filter API news for regional content

@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased text-gray-800 bg-gray-50;
+  }
+  
+  /* Smooth scrolling globally */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom scrollbar for premium feel */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+
+  /* Dark mode scrollbar */
+  .dark ::-webkit-scrollbar-track {
+    @apply bg-dark-bg;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    @apply bg-dark-border;
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-600;
+  }
+}
+
+@layer components {
+  /* Premium Glassmorphism Cards */
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl rounded-2xl;
+  }
+  
+  .dark .glass-card {
+    @apply bg-dark-card/70 border-white/10 shadow-2xl;
+  }
+
+  /* Premium Buttons */
+  .btn-primary {
+    @apply px-6 py-2.5 rounded-lg font-medium text-white bg-brand-600 hover:bg-brand-500 transition-all duration-200 shadow-md hover:shadow-lg focus:ring-2 focus:ring-brand-500/50 focus:outline-none flex justify-center items-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-2.5 rounded-lg font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 hover:text-gray-900 transition-all duration-200 shadow-sm focus:ring-2 focus:ring-gray-200 focus:outline-none flex justify-center items-center gap-2;
+  }
+  
+  .dark .btn-secondary {
+    @apply bg-dark-card border-dark-border text-gray-300 hover:bg-gray-800 hover:text-white focus:ring-gray-700;
+  }
+
+  /* Inputs */
+  .input-premium {
+    @apply w-full px-4 py-3 rounded-lg border border-gray-300 bg-gray-50 text-gray-900 focus:bg-white focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500 transition-all duration-200 outline-none;
+  }
+
+  .dark .input-premium {
+    @apply bg-dark-bg border-dark-border text-white focus:ring-brand-500/50 focus:border-brand-500 placeholder-gray-500;
+  }
+}
