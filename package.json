@@ -1,0 +1,13 @@
+{
+  "name": "truthguard-project",
+  "version": "1.0.0",
+  "description": "TruthGuard: Fake News Detection System",
+  "scripts": {
+    "flask": "python app.py",
+    "tailwind": "npm run watch:css --prefix Frontend",
+    "dev": "concurrently \"npm run flask\" \"npm run tailwind\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

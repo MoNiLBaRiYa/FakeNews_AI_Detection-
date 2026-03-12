@@ -8,7 +8,7 @@ import sys
 import logging
 from typing import List, Dict
 from urllib.parse import quote_plus
-from googletrans import Translator
+from deep_translator import GoogleTranslator
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -17,8 +17,10 @@ from config import config
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Initialize translator for multi-language support
-translator = Translator()
+# Note: deep-translator doesn't need a persistent object like googletrans, 
+# but we'll keep the variable name 'translator' for compatibility if needed.
+# However, it's better to instantiate in the function.
+translator = None 
 
 # Load configuration
 env = os.getenv('FLASK_ENV', 'development')
@@ -109,9 +111,9 @@ def translate_text(text: str, target_lang: str = 'en') -> str:
         if source_lang == target_lang:
             return text
         
-        # Translate using Google Translate
-        result = translator.translate(text, src=source_lang, dest=target_lang)
-        return result.text
+        # Translate using deep-translator (replaces unreliable googletrans)
+        result = GoogleTranslator(source=source_lang, target=target_lang).translate(text)
+        return result
     except Exception as e:
         logger.error(f"Translation error: {e}")
         return text  # Return original text on error
@@ -173,7 +175,24 @@ def predict_news(text: str) -> str:
         text_clean = text_clean.strip()
         
         if not text_clean or len(text_clean) < 10:
-            return "Real News"
+            return "Unable to Determine"
+        
+        # STEP 0: GIBBERISH DETECTION — reject random keyboard mashing
+        # Real text has a healthy mix of vowels. Gibberish has very few.
+        letters_only = re.sub(r'[^a-z]', '', text_clean)
+        if len(letters_only) > 8:
+            vowels = sum(1 for c in letters_only if c in 'aeiou')
+            vowel_ratio = vowels / len(letters_only)
+            # Real English has ~38% vowels. Flag anything below 15% as gibberish.
+            if vowel_ratio < 0.15:
+                return "Unable to Determine"
+        
+        # Also check: if average word length is >10 it's likely gibberish
+        words_check = text_clean.split()
+        if words_check:
+            avg_len = sum(len(w) for w in words_check) / len(words_check)
+            if avg_len > 10 and len(words_check) < 4:
+                return "Unable to Determine"
         
         # STEP 1: DEFINITE FAKE - Strong indicators (high precision)
         definite_fake_indicators = [
@@ -654,47 +673,88 @@ def fetch_indian_news(query: str = "latest", region: str = "", city: str = "", s
             source_label = ""
             article_lang = language
             
-            if city:
+            if city and city.lower() in url.lower():
                 source_label = f"[{city}] "
             elif "sandesh" in url or "divyabhaskar" in url or "gujaratsamachar" in url:
-                source_label = "[Gujarat-ગુજરાત] "
+                source_label = "[Gujarat] "
                 article_lang = 'gu'
             elif "bhaskar" in url or "jagran" in url or "amarujala" in url or "navbharat" in url:
-                source_label = "[India-हिंदी] "
+                source_label = "[India] "
                 article_lang = 'hi'
             elif "gujarat" in url.lower() or "ahmedabad" in url.lower():
                 source_label = "[Gujarat] "
             elif "bbc" in url.lower() or "reuters" in url.lower() or "aljazeera" in url.lower():
                 source_label = "[International] "
+            elif city:
+                source_label = f"[{city}] "
             else:
                 source_label = "[India] "
             
             source_news = []
-            for article in articles[:10]:  # Increased to 10 per source for city-specific news
+            for article in articles[:10]:
                 text = article.text.strip()
-                # Better validation
                 if text and 20 < len(text) < 500:
-                    # Less restrictive filtering: since we are already querying regional sources
-                    # or city-specific URLs, we assume the content is relevant to the user's location.
-                    has_location_match = True
+                    # Detect original city from the specific article text
+                    # List of Gujarati cities to check for
+                    gu_cities = {
+                        "Gandhinagar": ["Gandhinagar", "ગાંધીનગર"],
+                        "Ahmedabad": ["Ahmedabad", "Amdavad", "અમદાવાદ"],
+                        "Surat": ["Surat", "સુરત"],
+                        "Vadodara": ["Vadodara", "Baroda", "વડોદરા"],
+                        "Rajkot": ["Rajkot", "રાજકોટ"],
+                        "Bhavnagar": ["Bhavnagar", "ભાવનગર"],
+                        "Jamnagar": ["Jamnagar", "જામનગર"],
+                        "Junagadh": ["Junagadh", "જૂનાગઢ"],
+                        "Mehsana": ["Mehsana", "મહેસાણા"],
+                        "Morbi": ["Morbi", "મોરબી"],
+                        "Amreli": ["Amreli", "અમરેલી"],
+                        "Somnath": ["Somnath", "સોમનાથ"],
+                        "Talala": ["Talala", "તાલાલા"],
+                        "Veraval": ["Veraval", "વેરાવળ"],
+                        "Porbandar": ["Porbandar", "પોરબંદર"],
+                        "Anand": ["Anand", "આણંદ"],
+                        "Nadiad": ["Nadiad", "નડિયાદ"],
+                        "Bharuch": ["Bharuch", "ભરૂચ"],
+                        "Navsari": ["Navsari", "નવસારી"],
+                        "Valsad": ["Valsad", "વલસાડ"],
+                        "Vapi": ["Vapi", "વાપી"],
+                        "Bhuj": ["Bhuj", "ભુજ"],
+                        "Gandhidham": ["Gandhidham", "ગાંધીધામ"],
+                        "Botad": ["Botad", "બોટાદ"],
+                        "Patan": ["Patan", "પાટણ"],
+                        "Dahod": ["Dahod", "દાહોદ"],
+                        "Godhra": ["Godhra", "ગોધરા"],
+                        "Palanpur": ["Palanpur", "પાલનપુર"],
+                        "Mumbai": ["Mumbai", "મુંબઈ"],
+                        "Delhi": ["Delhi", "દિલ્હી"]
+                    }
                     
-                    # If we were given a specific city strictly requiring text matches, try proximity fallback
-                    # This only applies if we aren't using the dedicated Gujarat/regional catch-all buckets.
+                    found_city = ""
+                    for c_label, synonyms in gu_cities.items():
+                        if any(syn.lower() in text.lower() for syn in synonyms):
+                            found_city = c_label
+                            break
+                    
+                    # Update label with detected city, fallback to requested city if it's a dedicated source
+                    final_label = source_label
+                    if found_city:
+                        final_label = f"[{found_city}] "
+                    elif city and (city.lower() in url.lower() or city.lower() in text.lower()):
+                        final_label = f"[{city}] "
+                    
+                    has_location_match = True
+                    # If we were given a specific city AND it's not a generic regional source,
+                    # we keep the relevance filter logic but respect the detected city label.
                     is_city_dedicated_url = city and city.lower() in url.lower()
                     if city and not is_city_dedicated_url and not any(kw in url.lower() for kw in ["gujarat", "ahmedabad", "sandesh", "divyabhaskar"]):
-                        # Check city name
-                        has_location_match = city.lower() in text.lower()
-                        # Fallback to proximity district
-                        if not has_location_match and district:
-                            has_location_match = district.lower() in text.lower()
-                            if has_location_match:
-                                source_label = f"[{district}] (Nearby) "
+                        # Check requested city name or district
+                        has_location_match = (city.lower() in text.lower()) or (district and district.lower() in text.lower())
                     
                     if not has_location_match:
                         continue
                 
-                    # Add language metadata
-                    labeled_text = f"{source_label}{text}|||LANG:{article_lang}"
+                    # Add language metadata with correct detected/regional label
+                    labeled_text = f"{final_label}{text}|||LANG:{article_lang}"
                     source_news.append(labeled_text)
                     
             logger.info(f"Fetched {len(articles[:5])} articles from {url}")
@@ -800,71 +860,132 @@ def fetch_newsdata_news(query: str = "latest") -> List[str]:
 def find_article_source(text: str) -> Dict[str, str]:
     """
     Best-effort attempt to find a likely online source for a given news text.
-    Uses NewsAPI (if configured) to search for matching articles.
-
-    Returns dict with keys: title, source, url. If nothing is found, url is '' and
-    source/title are 'Unknown'.
+    Uses pattern extraction, keyword matching, and NewsAPI for verification.
     """
-    api_key = app_config.NEWSAPI_KEY
-    if not api_key or not text:
+    if not text:
         return {"title": "Unknown", "source": "Unknown", "url": ""}
 
-    # Build a compact query from the text (headline or first 12 words)
-    cleaned = re.sub(r'\s+', ' ', text.strip())
-    words = cleaned.split(' ')
-    if len(words) > 16:
-        snippet = ' '.join(words[:16])
-    else:
-        snippet = cleaned
+    # 1. Pattern-based Source Extraction (Looking for "via Source" or "Source Breaking")
+    # This tries to identify names directly mentioned in typical announcement patterns
+    extracted_source = None
+    
+    # Check for [Source] or (Source) at the start
+    bracket_match = re.search(r'^[\[\(]([^\]\)]+)[\]\)]', text)
+    if bracket_match:
+        extracted_source = bracket_match.group(1).strip()
+    
+    # Check for "Source Breaking" or "Source Exclusive" patterns (English/Gujarati/Hindi)
+    breaking_patterns = [
+        r"^(.*?)\s+(?:Breaking|Exclusive|Live|બ્રેકિંગ|સમાચાર|ब्रेकिंग|समाचार)",
+        r"(.*?)\s+પાસે\s+સિંચાઈ", # Gujarati specific
+        r"(.*?)\s+के\s+मुताबिक", # Hindi for 'according to'
+        r"(.*?)\s+की\s+रिपोर्ट", # Hindi for 'report by'
+        r"according to (.*?)[,\.]",
+        r"reports (.*?)[,\.]",
+        r"અનુસાર (.*?)[,\.]",
+        r"अनुसार (.*?)[,\.]"
+    ]
+    
+    for pattern in breaking_patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            candidate = match.group(1).strip()
+            if 2 < len(candidate) < 25: # Reasonable source name length
+                extracted_source = candidate
+                break
 
-    try:
-        query = quote_plus(snippet[:200])
-        url = (
-            f"https://newsapi.org/v2/everything?"
-            f"q={query}&language=en&pageSize=5&sortBy=publishedAt&apiKey={api_key}"
-        )
-        resp = requests.get(url, timeout=10)
-        resp.raise_for_status()
-        data = resp.json()
+    # 2. Regex-based Brand Detection (Direct mapping for known entities)
+    brand_patterns = {
+        "Divya Bhaskar": [r"દિવ્ય ભાસ્કર", r"ભાસ્કર", r"Bhaskar"],
+        "Sandesh": [r"સંદેશ", r"Sandesh"],
+        "Gujarat Samachar": [r"ગુજરાત સમાચાર", r"Gujarat Samachar"],
+        "Dainik Bhaskar": [r"દૈનિક ભાસ્કર", r"दैनिक भास्कर"],
+        "Dainik Jagran": [r"દૈનિક જાગરણ", r"Jagran", r"दैनिक जागरण"],
+        "Amar Ujala": [r"Amar Ujala", r"अमर उजाला"],
+        "Hindustan Times": [r"Hindustan Times", r"HT"],
+        "Times of India": [r"Times of India", r"TOI"],
+        "The Hindu": [r"The Hindu"],
+        "NDTV": [r"NDTV", r"એનડીટીવી", r"एनडीटीवी"],
+        "BBC News": [r"BBC", r"બીબીસી", r"बीबीसी"],
+        "VTV Gujarati": [r"VTV", r"વીટીવી"],
+        "News18": [r"News18", r"ન્યૂઝ18", r"न्यूज18"],
+        "Indian Express": [r"Indian Express", r"Ind Express"],
+        "ABP News": [r"ABP", r"એબીપી", r"एबीपी"],
+        "TV9 Gujarati": [r"TV9", r"ટીવી9", r"टीवी9"]
+    }
 
-        if data.get("status") != "ok":
-            logger.warning(f"find_article_source: NewsAPI error: {data.get('message')}")
-            return {"title": "Unknown", "source": "Unknown", "url": ""}
+    detected_brand = extracted_source if extracted_source else "Unknown"
+    for brand, patterns in brand_patterns.items():
+        if any(re.search(p, text, re.IGNORECASE) for p in patterns):
+            detected_brand = brand
+            break
 
-        text_lower = cleaned.lower()
-        best_article = None
-        best_score = 0.0
+    # 3. NewsAPI Search for Verification (Using segmented search)
+    api_key = app_config.NEWSAPI_KEY
+    if api_key and api_key != "[PASTE YOUR NEWSAPI KEY HERE]":
+        try:
+            # Clean text for query: remove common noise words
+            noise_words = [r"Breaking", r"Exclusive", r"Live", r"બ્રેકિંગ", r"સમાચાર", r"તાજા", r"ब्रेकिंग", r"समाचार", r"ताजा"]
+            query_base = text
+            for word in noise_words:
+                query_base = re.sub(word, ' ', query_base, flags=re.IGNORECASE)
+            
+            cleaned = re.sub(r'\s+', ' ', query_base.strip())
+            words = cleaned.split(' ')
+            
+            # Try two different snippets of the article to find a match
+            search_snippets = []
+            if len(words) >= 4:
+                search_snippets.append(' '.join(words[:12])) # Start
+            if len(words) >= 20:
+                search_snippets.append(' '.join(words[8:20])) # Middle
+                
+            for snippet in search_snippets:
+                if not snippet: continue
+                
+                lang_code = detect_language(text)
+                supported_langs = ['ar', 'de', 'en', 'es', 'fr', 'he', 'it', 'nl', 'no', 'pt', 'ru', 'sv', 'ud', 'zh']
+                lang_param = f"&language={lang_code}" if lang_code in supported_langs else ""
 
-        for article in data.get("articles", []):
-            title = (article.get("title") or "").strip()
-            description = (article.get("description") or "").strip()
-            candidate = f"{title}. {description}".strip().lower()
-            if not candidate:
-                continue
+                query = quote_plus(snippet[:240])
+                url = f"https://newsapi.org/v2/everything?q={query}{lang_param}&pageSize=3&sortBy=relevancy&apiKey={api_key}"
+                
+                resp = requests.get(url, timeout=8)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    articles = data.get("articles", [])
+                    if not articles: continue
 
-            # Simple overlap score between text and candidate
-            text_words = set(w for w in re.findall(r'\w+', text_lower) if len(w) > 3)
-            cand_words = set(w for w in re.findall(r'\w+', candidate) if len(w) > 3)
-            if not text_words or not cand_words:
-                continue
-            overlap = text_words.intersection(cand_words)
-            score = len(overlap) / float(len(text_words))
+                    best_article = None
+                    best_score = 0.0
+                    for article in articles:
+                        title = (article.get("title") or "").lower()
+                        desc = (article.get("description") or "").lower()
+                        # Simple word overlap check
+                        text_words = set(re.findall(r'\w+', snippet.lower()))
+                        art_words = set(re.findall(r'\w+', f"{title} {desc}"))
+                        overlap = text_words.intersection(art_words)
+                        score = len(overlap) / float(len(text_words)) if text_words else 0
+                        
+                        if score > best_score:
+                            best_score = score
+                            best_article = article
+                    
+                    if best_article and best_score >= 0.25:
+                        return {
+                            "title": best_article.get("title") or "Verified Article",
+                            "source": (best_article.get("source") or {}).get("name") or detected_brand,
+                            "url": best_article.get("url") or ""
+                        }
+        except Exception as e:
+            logger.error(f"find_article_source API verification failure: {e}")
 
-            if score > best_score:
-                best_score = score
-                best_article = article
-
-        if best_article and best_score >= 0.25:
-            return {
-                "title": best_article.get("title") or "Unknown",
-                "source": (best_article.get("source") or {}).get("name", "Unknown"),
-                "url": best_article.get("url") or "",
-            }
-
-    except Exception as e:
-        logger.error(f"find_article_source error: {e}")
-
-    return {"title": "Unknown", "source": "Unknown", "url": ""}
+    # Fallback to detected/extracted brand info
+    return {
+        "title": f"Report mentioning {detected_brand}" if detected_brand != "Unknown" else "Unverified Report",
+        "source": detected_brand,
+        "url": ""
+    }
     
     # Enhance query for India/Gujarat context
     enhanced_query = query
@@ -982,14 +1103,19 @@ def fetch_and_predict_news(query: str = "latest", region: str = "", city: str = 
     
     # Combine results: Prioritize city-specific and language-specific news
     if city:
-        # Since scraped_news is already fetched using city-specific URLs/routings, 
-        # we consider all of it valid for this city to prevent aggressive text-filtering.
+        # Separate city-specific news from general regional news
+        city_scraped = [art for art in scraped_news if city.lower() in art.lower()]
+        other_scraped = [art for art in scraped_news if city.lower() not in art.lower()]
+        
         city_api = [art for art in api_news if city.lower() in art.lower()]
         other_api = [art for art in api_news if city.lower() not in art.lower()]
         
-        # Prioritize: all scraped > city API > other API
-        news_list = scraped_news[:15] + city_api[:5] + other_api[:5]
-        logger.info(f"Using city-prioritized results for '{city}'")
+        # Priority Order for "Nearby Live Location First":
+        # 1. Scraping results that actually mention the city
+        # 2. API results that actually mention the city
+        # 3. Rest of the scraped/regional news
+        news_list = city_scraped[:10] + city_api[:5] + other_scraped[:10] + other_api[:5]
+        logger.info(f"Using city-prioritized results for '{city}' (Nearby First logic applied)")
     elif region:
         # Filter API news for regional content
         regional_api = [art for art in api_news if region.lower() in art.lower()]
@@ -1023,11 +1149,20 @@ def fetch_and_predict_news(query: str = "latest", region: str = "", city: str = 
     
     if not news_list:
         location_str = f"{city}, {state}" if city else region
+        # Clean up location string if state is too long or redundant
+        if city and state:
+            if state.lower() in city.lower() or city.lower() in state.lower():
+                location_str = city
+            elif len(state) > 30:
+                location_str = city
+                
+        display_query = query if query and query.lower() != "latest" else "news"
         logger.warning(f"No news articles fetched for query: '{query}', location: '{location_str}'")
         return {
-            "news": [f"No news found for '{query}' in {location_str}. Try a different search term like 'technology', 'politics', 'health', or 'sports'."],
-            "predictions": ["Real News"],  # Changed from "Unknown" to "Real News" for consistency
-            "languages": ["en"]
+            "news": [],
+            "predictions": [],
+            "languages": [],
+            "message": f"No intelligence signals detected for '{display_query}' in {location_str}."
         }
     
     # Process articles: Predict for each article (translate if needed for ML model)

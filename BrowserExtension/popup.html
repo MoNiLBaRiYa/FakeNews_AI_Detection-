@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>TruthGuard AI</title>
+  <style>
+    body {
+      width: 320px;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+      margin: 0;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding-bottom: 12px;
+    }
+    h1 {
+      font-size: 16px;
+      margin: 0;
+      color: #6366f1;
+    }
+    button {
+      width: 100%;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: #4338ca; }
+    button:disabled { background: #334155; cursor: not-allowed; }
+    #result {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.05);
+      font-size: 13px;
+      display: none;
+    }
+    .status-fake { color: #ef4444; font-weight: bold; }
+    .status-real { color: #10b981; font-weight: bold; }
+    .status-unknown { color: #f59e0b; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+    </svg>
+    <h1>TruthGuard AI</h1>
+  </div>
+  
+  <p style="font-size: 13px; color: #94a3b8; margin-bottom: 16px;">
+    Highlight text on any webpage and click the button below to verify its authenticity.
+  </p>
+  
+  <button id="analyzeBtn">Analyze Selected Text</button>
+  
+  <div id="result">
+    <div id="prediction" style="font-size: 16px; margin-bottom: 4px;"></div>
+    <div id="confidence" style="margin-bottom: 8px;"></div>
+    <div id="reason" style="color: #cbd5e1; line-height: 1.4;"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

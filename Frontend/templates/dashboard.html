@@ -33,14 +33,19 @@
                 </div>
 
                 <!-- Desktop Menu -->
-                <div class="hidden md:flex flex-1 items-center justify-center gap-8">
+                <div class="hidden md:flex flex-1 items-center justify-center gap-2">
                     <a href="/dashboard"
-                        class="text-white font-semibold text-sm transition-colors border-b-2 border-brand-500 py-5">Dashboard</a>
+                        class="flex items-center gap-1.5 text-white font-semibold text-sm bg-brand-500/10 border border-brand-500/30 px-3 py-2 rounded-lg">
+                        <i class="fas fa-th-large text-xs text-brand-400"></i> Dashboard</a>
                     <a href="/analyzer"
-                        class="text-gray-400 hover:text-white font-medium text-sm transition-colors py-5 border-b-2 border-transparent hover:border-white/30">Analyzer</a>
+                        class="flex items-center gap-1.5 text-gray-400 hover:text-white font-medium text-sm transition-all px-3 py-2 rounded-lg hover:bg-white/5">
+                        <i class="fas fa-microchip text-xs"></i> Analyzer</a>
                     <a href="/threat-map"
-                        class="text-gray-400 hover:text-white font-medium text-sm transition-colors py-5 border-b-2 border-transparent hover:border-white/30">Threat
-                        Map</a>
+                        class="flex items-center gap-1.5 text-gray-400 hover:text-white font-medium text-sm transition-all px-3 py-2 rounded-lg hover:bg-white/5">
+                        <i class="fas fa-globe-asia text-xs"></i> Threat Map</a>
+                    <a href="/history"
+                        class="flex items-center gap-1.5 text-gray-400 hover:text-white font-medium text-sm transition-all px-3 py-2 rounded-lg hover:bg-white/5">
+                        <i class="fas fa-history text-xs"></i> History</a>
                 </div>
 
                 <!-- User Profile & Action -->
@@ -51,7 +56,7 @@
                             class="w-6 h-6 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center text-xs">
                             <i class="fas fa-user"></i>
                         </div>
-                        <span class="text-xs font-medium text-gray-300">Welcome User</span>
+                        <span class="text-xs font-medium text-gray-300">Welcome, {{ username or 'User' }}</span>
                     </div>
                     <button onclick="handleLogout()"
                         class="text-sm font-semibold text-gray-400 hover:text-white transition-colors flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5"
@@ -68,68 +73,68 @@
     <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
 
         <!-- Welcome Hero -->
-        <div
-            class="relative overflow-hidden rounded-3xl bg-slate-900 border border-white/10 p-8 md:p-12 mb-8 shadow-2xl">
+        <div class="relative overflow-hidden rounded-3xl p-8 md:p-12 mb-8 shadow-2xl"
+             style="background: linear-gradient(135deg, #0d1525 0%, #0f1e35 40%, #0a1020 100%); border: 1px solid rgba(16,185,129,0.15);">
             <!-- Decorative blobs -->
-            <div
-                class="absolute top-0 right-0 -mr-20 -mt-20 w-72 h-72 rounded-full bg-brand-500/20 mix-blend-screen filter blur-[80px]">
-            </div>
-            <div
-                class="absolute bottom-0 left-0 -ml-20 -mb-20 w-72 h-72 rounded-full bg-purple-500/20 mix-blend-screen filter blur-[80px]">
-            </div>
+            <div class="absolute top-0 right-0 -mr-10 -mt-10 w-80 h-80 rounded-full opacity-30 pointer-events-none"
+                 style="background: radial-gradient(circle, #10b981 0%, transparent 70%);"></div>
+            <div class="absolute bottom-0 left-0 -ml-10 -mb-10 w-72 h-72 rounded-full opacity-20 pointer-events-none"
+                 style="background: radial-gradient(circle, #8b5cf6 0%, transparent 70%);"></div>
+            <!-- Grid lines overlay -->
+            <div class="absolute inset-0 pointer-events-none" style="background-image: linear-gradient(rgba(16,185,129,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(16,185,129,0.03) 1px, transparent 1px); background-size: 40px 40px;"></div>
 
             <div class="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                 <div>
-                    <div
-                        class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/20 text-brand-400 text-xs font-bold tracking-wide uppercase mb-6">
-                        <span class="w-1.5 h-1.5 rounded-full bg-brand-400 animate-pulse"></span>
-                        System Active
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-6"
+                         style="background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25);">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span class="text-emerald-400 text-xs font-bold tracking-widest uppercase">AI System Active</span>
                     </div>
-                    <h1 class="text-4xl md:text-5xl font-black text-white leading-tight tracking-tight mb-4">
-                        Intelligent Fake News Detection.
+                    <h1 class="text-4xl md:text-5xl font-black text-white leading-tight tracking-tight mb-3">
+                        Welcome back, <span style="background: linear-gradient(135deg, #10b981, #34d399); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{{ username or 'User' }}</span>!
                     </h1>
                     <p class="text-gray-400 text-base md:text-lg mb-8 leading-relaxed max-w-xl">
-                        Your intelligent companion for filtering out misinformation. Leverage our machine learning model
-                        to verify claims, spot linguistic manipulation, and browse live news threat assessments.
+                        Your AI-powered fake news detection system is ready. Analyze articles, scan deepfakes, and monitor global misinformation trends.
                     </p>
 
-                    <div class="flex flex-wrap gap-4">
-                        <a href="/analyzer" class="btn-primary">
-                            <i class="fas fa-search"></i> Launch Analyzer
+                    <div class="flex flex-wrap gap-3">
+                        <a href="/analyzer" class="btn-primary flex items-center gap-2">
+                            <i class="fas fa-microchip"></i> Launch Analyzer
                         </a>
-                        <a href="/threat-map" class="btn-secondary">
-                            <i class="fas fa-globe-asia"></i> Global Threat Map
+                        <a href="/threat-map" class="btn-secondary flex items-center gap-2">
+                            <i class="fas fa-globe-asia"></i> Threat Map
+                        </a>
+                        <a href="/history" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-gray-300 border border-white/10 hover:border-white/30 hover:text-white transition-all">
+                            <i class="fas fa-history"></i> My History
                         </a>
                     </div>
                 </div>
 
                 <!-- Stats Grid -->
-                <div class="grid grid-cols-2 gap-4">
-                    <div
-                        class="bg-dark-bg/60 border border-white/5 p-6 rounded-2xl backdrop-blur-sm hover:border-brand-500/30 transition-colors">
-                        <div class="text-brand-400 text-2xl mb-2"><i class="fas fa-bullseye"></i></div>
-                        <div class="text-3xl font-bold text-white tracking-tight mb-1">99.6%</div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="rounded-2xl p-5 backdrop-blur-sm transition-all hover:scale-105 cursor-default"
+                         style="background: rgba(255,255,255,0.03); border: 1px solid rgba(16,185,129,0.15);">
+                        <div class="text-emerald-400 text-2xl mb-2"><i class="fas fa-bullseye"></i></div>
+                        <div class="text-3xl font-black text-white mb-1">99.6%</div>
                         <div class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Model Accuracy</div>
                     </div>
-                    <div
-                        class="bg-dark-bg/60 border border-white/5 p-6 rounded-2xl backdrop-blur-sm hover:border-brand-500/30 transition-colors">
+                    <div class="rounded-2xl p-5 backdrop-blur-sm transition-all hover:scale-105 cursor-default"
+                         style="background: rgba(255,255,255,0.03); border: 1px solid rgba(139,92,246,0.15);">
                         <div class="text-purple-400 text-2xl mb-2"><i class="fas fa-database"></i></div>
-                        <div class="text-3xl font-bold text-white tracking-tight mb-1">10K+</div>
-                        <div class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Articles Analyzed
-                        </div>
+                        <div class="text-3xl font-black text-white mb-1">10K+</div>
+                        <div class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Articles Analyzed</div>
                     </div>
-                    <div
-                        class="bg-dark-bg/60 border border-white/5 p-6 rounded-2xl backdrop-blur-sm hover:border-brand-500/30 transition-colors">
+                    <div class="rounded-2xl p-5 backdrop-blur-sm transition-all hover:scale-105 cursor-default"
+                         style="background: rgba(255,255,255,0.03); border: 1px solid rgba(59,130,246,0.15);">
                         <div class="text-blue-400 text-2xl mb-2"><i class="fas fa-bolt"></i></div>
-                        <div class="text-3xl font-bold text-white tracking-tight mb-1">&lt;1s</div>
+                        <div class="text-3xl font-black text-white mb-1">&lt;1s</div>
                         <div class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Response Time</div>
                     </div>
-                    <div
-                        class="bg-dark-bg/60 border border-white/5 p-6 rounded-2xl backdrop-blur-sm hover:border-brand-500/30 transition-colors">
-                        <div class="text-emerald-400 text-2xl mb-2"><i class="fas fa-language"></i></div>
-                        <div class="text-3xl font-bold text-white tracking-tight mb-1">3</div>
-                        <div class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Supported Languages
-                        </div>
+                    <div class="rounded-2xl p-5 backdrop-blur-sm transition-all hover:scale-105 cursor-default"
+                         style="background: rgba(255,255,255,0.03); border: 1px solid rgba(245,158,11,0.15);">
+                        <div class="text-amber-400 text-2xl mb-2"><i class="fas fa-language"></i></div>
+                        <div class="text-3xl font-black text-white mb-1">3</div>
+                        <div class="text-xs text-gray-500 font-semibold uppercase tracking-wider">Languages</div>
                     </div>
                 </div>
             </div>

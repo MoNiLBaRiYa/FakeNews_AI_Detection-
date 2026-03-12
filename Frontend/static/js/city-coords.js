@@ -211,4 +211,9 @@ var CITY_COORDS = {
 
     // ─── ASSAM / NORTH EAST ───────────────────────────────────────────────────
     'guwahati': { lat: 26.1445, lon: 91.7362, label: 'Guwahati', state: 'Assam' },
+    
+    // ─── REGIONAL FALLBACKS ──────────────────────────────────────────────────
+    'gujarat': { lat: 23.2156, lon: 72.6369, label: 'Gujarat', state: 'Gujarat' },
+    'india': { lat: 20.5937, lon: 78.9629, label: 'India', state: '' },
+    'international': { lat: 20.0, lon: 0.0, label: 'Worldwide', state: '' },
 };

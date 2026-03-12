@@ -62,14 +62,19 @@
                 </div>
 
                 <!-- Desktop Menu -->
-                <div class="hidden md:flex flex-1 items-center justify-center gap-8">
+                <div class="hidden md:flex flex-1 items-center justify-center gap-2">
                     <a href="/dashboard"
-                        class="text-gray-400 hover:text-white font-medium text-sm transition-colors py-5 border-b-2 border-transparent hover:border-white/30">Dashboard</a>
+                        class="flex items-center gap-1.5 text-gray-400 hover:text-white font-medium text-sm transition-all px-3 py-2 rounded-lg hover:bg-white/5">
+                        <i class="fas fa-th-large text-xs"></i> Dashboard</a>
                     <a href="/analyzer"
-                        class="text-white font-semibold text-sm transition-colors border-b-2 border-brand-500 py-5">Analyzer</a>
+                        class="flex items-center gap-1.5 text-white font-semibold text-sm bg-brand-500/10 border border-brand-500/30 px-3 py-2 rounded-lg">
+                        <i class="fas fa-microchip text-xs text-brand-400"></i> Analyzer</a>
                     <a href="/threat-map"
-                        class="text-gray-400 hover:text-white font-medium text-sm transition-colors py-5 border-b-2 border-transparent hover:border-white/30">Threat
-                        Map</a>
+                        class="flex items-center gap-1.5 text-gray-400 hover:text-white font-medium text-sm transition-all px-3 py-2 rounded-lg hover:bg-white/5">
+                        <i class="fas fa-globe-asia text-xs"></i> Threat Map</a>
+                    <a href="/history"
+                        class="flex items-center gap-1.5 text-gray-400 hover:text-white font-medium text-sm transition-all px-3 py-2 rounded-lg hover:bg-white/5">
+                        <i class="fas fa-history text-xs"></i> History</a>
                 </div>
 
                 <!-- User Profile & Action -->
@@ -80,7 +85,7 @@
                             class="w-6 h-6 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center text-xs">
                             <i class="fas fa-user"></i>
                         </div>
-                        <span class="text-xs font-medium text-gray-300">Welcome User</span>
+                        <span class="text-xs font-medium text-gray-300">Welcome, {{ username or 'User' }}</span>
                     </div>
                     <button onclick="handleLogout()"
                         class="text-sm font-semibold text-gray-400 hover:text-white transition-colors flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5"
@@ -107,10 +112,19 @@
                         class="absolute top-0 right-0 w-64 h-64 bg-brand-500/10 rounded-full filter blur-[60px] pointer-events-none">
                     </div>
 
-                    <div class="mb-8">
+                    <div class="mb-4">
                         <h2 class="text-2xl font-bold text-white tracking-tight mb-2">Content Analyzer</h2>
-                        <p class="text-sm text-gray-400">Paste the text of a news article, blog post, or social media
-                            headline here. Our AI will analyze its linguistic traits to verify authenticity.</p>
+                        <p class="text-sm text-gray-400">Analyze articles for linguistic deception, or scan images to detect potential Deepfake manipulation.</p>
+                    </div>
+
+                    <!-- Input Mode Tabs -->
+                    <div class="flex border-b border-white/10 mb-6">
+                        <button id="tabText" class="px-6 py-3 text-sm font-semibold border-b-2 border-brand-500 text-brand-400 focus:outline-none" onclick="switchTab('text')">
+                            <i class="fas fa-align-left mr-2"></i>Text Article
+                        </button>
+                        <button id="tabImage" class="px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-300 focus:outline-none" onclick="switchTab('image')">
+                            <i class="fas fa-image mr-2"></i>Image / Deepfake
+                        </button>
                     </div>
 
                     <form id="analyzeForm" method="POST" action="/analyze">
@@ -150,9 +164,30 @@
                         <!-- Submit -->
                         <button type="submit"
                             class="w-full sm:w-auto btn-primary py-3.5 px-8 font-bold text-[15px] shadow-brand-500/30 group">
-                            <i class="fas fa-microchip mr-2 group-hover:rotate-12 transition-transform"></i> Run AI
-                            Analysis
+                            <i class="fas fa-microchip mr-2 group-hover:rotate-12 transition-transform"></i> Run AI Analysis
                         </button>
+                    </form>
+                       <form id="analyzeImageForm" class="hidden">
+                        <div class="relative mb-4">
+                            <div class="w-full min-h-[256px] h-auto rounded-2xl border-2 border-dashed border-white/20 hover:border-purple-500/50 bg-slate-900/40 flex flex-col items-center justify-center transition-all cursor-pointer overflow-hidden p-2" id="dropZone" onclick="document.getElementById('imageUpload').click()">
+                                <i id="uploadIcon" class="fas fa-cloud-upload-alt text-4xl text-gray-500 mb-4"></i>
+                                <span id="uploadText" class="text-gray-300 font-medium">Drag &amp; Drop an image here</span>
+                                <span id="uploadSub" class="text-gray-500 text-sm mt-1">or click to browse from device</span>
+                                <input type="file" id="imageUpload" accept="image/*" class="hidden" onchange="previewImage(this)">
+                                <img id="imagePreview" class="w-full h-auto max-h-[500px] object-contain rounded-xl hidden" />
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 mb-4">
+                            <button type="submit" id="imageSubmitBtn"
+                                class="flex-1 bg-purple-600 hover:bg-purple-500 text-white rounded-xl py-3 px-6 font-bold text-[15px] shadow-lg shadow-purple-500/30 transition-all opacity-50 cursor-not-allowed" disabled>
+                                <i class="fas fa-search mr-2"></i> Scan for Deepfakes
+                            </button>
+                            <button type="button" id="changeImageBtn" onclick="resetImageUpload()" class="hidden px-4 py-3 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:border-white/30 transition-all text-sm font-semibold">
+                                <i class="fas fa-redo"></i> Change
+                            </button>
+                        </div>
+                        <!-- Inline Deepfake Result Card -->
+                        <div id="deepfakeResult" class="hidden rounded-2xl p-5 border" style="background: rgba(15,23,42,0.8); backdrop-filter: blur(10px);"></div>
                     </form>
                 </div>
 
@@ -370,6 +405,128 @@
                 alert('Analysis link copied to clipboard!');
             }
         }
+
+        function previewImage(input) {
+            const preview = document.getElementById('imagePreview');
+            const submitBtn = document.getElementById('imageSubmitBtn');
+            const changeBtn = document.getElementById('changeImageBtn');
+            const icon = document.getElementById('uploadIcon');
+            const text = document.getElementById('uploadText');
+            const sub = document.getElementById('uploadSub');
+            const resultDiv = document.getElementById('deepfakeResult');
+
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                    // Hide the placeholder text so it doesn't overlap the image
+                    icon.classList.add('hidden');
+                    text.classList.add('hidden');
+                    sub.classList.add('hidden');
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    changeBtn.classList.remove('hidden');
+                    // Clear any previous result
+                    resultDiv.classList.add('hidden');
+                    resultDiv.innerHTML = '';
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function resetImageUpload() {
+            document.getElementById('imageUpload').value = '';
+            document.getElementById('imagePreview').classList.add('hidden');
+            document.getElementById('imagePreview').src = '';
+            document.getElementById('uploadIcon').classList.remove('hidden');
+            document.getElementById('uploadText').classList.remove('hidden');
+            document.getElementById('uploadSub').classList.remove('hidden');
+            document.getElementById('imageSubmitBtn').disabled = true;
+            document.getElementById('imageSubmitBtn').classList.add('opacity-50', 'cursor-not-allowed');
+            document.getElementById('changeImageBtn').classList.add('hidden');
+            document.getElementById('deepfakeResult').classList.add('hidden');
+            document.getElementById('deepfakeResult').innerHTML = '';
+        }
+        
+        function switchTab(mode) {
+            const textForm = document.getElementById('analyzeForm');
+            const imageForm = document.getElementById('analyzeImageForm');
+            const tabText = document.getElementById('tabText');
+            const tabImage = document.getElementById('tabImage');
+            
+            if (mode === 'text') {
+                textForm.classList.remove('hidden');
+                imageForm.classList.add('hidden');
+                tabText.className = "px-6 py-3 text-sm font-semibold border-b-2 border-brand-500 text-brand-400 focus:outline-none";
+                tabImage.className = "px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-300 focus:outline-none";
+            } else {
+                textForm.classList.add('hidden');
+                imageForm.classList.remove('hidden');
+                tabImage.className = "px-6 py-3 text-sm font-semibold border-b-2 border-purple-500 text-purple-400 focus:outline-none";
+                tabText.className = "px-6 py-3 text-sm font-semibold border-b-2 border-transparent text-gray-500 hover:text-gray-300 focus:outline-none";
+            }
+        }
+        
+        // Deepfake Submission Form
+        document.getElementById('analyzeImageForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('imageSubmitBtn');
+            const fileInput = document.getElementById('imageUpload');
+            const resultDiv = document.getElementById('deepfakeResult');
+
+            if (!fileInput.files.length) return;
+
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Analyzing Pixels...';
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('image', fileInput.files[0]);
+
+            try {
+                const res = await fetch('/analyze_image', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    const isFake = data.result && data.result.toLowerCase().includes('fake');
+                    const borderColor = isFake ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)';
+                    const iconClass = isFake ? 'fa-exclamation-triangle' : 'fa-shield-check';
+                    const iconColor = isFake ? '#f87171' : '#34d399';
+                    const artifacts = data.artifacts_found && data.artifacts_found.length
+                        ? data.artifacts_found.map(a => `<span class="px-2 py-0.5 rounded-md text-xs" style="background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2)">${a}</span>`).join(' ')
+                        : '<span class="text-xs text-gray-500">No artifacts detected</span>';
+                    resultDiv.style.borderColor = borderColor;
+                    resultDiv.innerHTML = `
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:${iconColor}20;">
+                                <i class="fas ${iconClass}" style="color:${iconColor}"></i>
+                            </div>
+                            <div>
+                                <div class="text-lg font-black text-white">${data.result || 'Analysis Complete'}</div>
+                                <div class="text-xs text-gray-400">Confidence: <span class="font-bold" style="color:${iconColor}">${data.confidence}%</span></div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-gray-500 uppercase font-bold tracking-widest mb-2">Detected Artifacts</div>
+                        <div class="flex flex-wrap gap-1.5">${artifacts}</div>`;
+                    resultDiv.classList.remove('hidden');
+                } else {
+                    resultDiv.style.borderColor = 'rgba(239,68,68,0.3)';
+                    resultDiv.innerHTML = `<div class="text-red-400 text-sm flex items-center gap-2"><i class="fas fa-exclamation-circle"></i> ${data.error || 'Scan failed'}</div>`;
+                    resultDiv.classList.remove('hidden');
+                }
+            } catch (err) {
+                console.error(err);
+                resultDiv.style.borderColor = 'rgba(239,68,68,0.3)';
+                resultDiv.innerHTML = `<div class="text-red-400 text-sm flex items-center gap-2"><i class="fas fa-wifi"></i> Network error. Make sure the server is running.</div>`;
+                resultDiv.classList.remove('hidden');
+            } finally {
+                btn.innerHTML = '<i class="fas fa-search mr-2"></i> Scan Again';
+                btn.disabled = false;
+            }
+        });
 
         function handleLogout() {
             if (confirm('Are you sure you want to logout?')) {

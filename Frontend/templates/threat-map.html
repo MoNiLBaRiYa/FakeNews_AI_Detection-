@@ -106,14 +106,19 @@
                 </div>
 
                 <!-- Desktop Menu -->
-                <div class="hidden md:flex flex-1 items-center justify-center gap-8">
+                <div class="hidden md:flex flex-1 items-center justify-center gap-2">
                     <a href="/dashboard"
-                        class="text-gray-400 hover:text-white font-medium text-sm transition-colors py-5 border-b-2 border-transparent hover:border-white/30">Dashboard</a>
+                        class="flex items-center gap-1.5 text-gray-400 hover:text-white font-medium text-sm transition-all px-3 py-2 rounded-lg hover:bg-white/5">
+                        <i class="fas fa-th-large text-xs"></i> Dashboard</a>
                     <a href="/analyzer"
-                        class="text-gray-400 hover:text-white font-medium text-sm transition-colors py-5 border-b-2 border-transparent hover:border-white/30">Analyzer</a>
+                        class="flex items-center gap-1.5 text-gray-400 hover:text-white font-medium text-sm transition-all px-3 py-2 rounded-lg hover:bg-white/5">
+                        <i class="fas fa-microchip text-xs"></i> Analyzer</a>
                     <a href="/threat-map"
-                        class="text-white font-semibold text-sm transition-colors border-b-2 border-brand-500 py-5">Threat
-                        Map</a>
+                        class="flex items-center gap-1.5 text-white font-semibold text-sm bg-brand-500/10 border border-brand-500/30 px-3 py-2 rounded-lg">
+                        <i class="fas fa-globe-asia text-xs text-brand-400"></i> Threat Map</a>
+                    <a href="/history"
+                        class="flex items-center gap-1.5 text-gray-400 hover:text-white font-medium text-sm transition-all px-3 py-2 rounded-lg hover:bg-white/5">
+                        <i class="fas fa-history text-xs"></i> History</a>
                 </div>
 
                 <!-- User Profile & Action -->
@@ -124,7 +129,7 @@
                             class="w-6 h-6 rounded-full bg-brand-500/20 text-brand-400 flex items-center justify-center text-xs">
                             <i class="fas fa-user"></i>
                         </div>
-                        <span class="text-xs font-medium text-gray-300">Welcome User</span>
+                        <span class="text-xs font-medium text-gray-300">Welcome, {{ username or 'User' }}</span>
                     </div>
                     <button onclick="handleLogout()"
                         class="text-sm font-semibold text-gray-400 hover:text-white transition-colors flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5"
@@ -271,20 +276,39 @@
                 </div>
             </div>
 
-            <!-- Feed Feed Sidebar -->
+            <!-- Feed Sidebar -->
             <div
-                class="xl:col-span-1 flex flex-col h-full max-h-[632px] bg-dark-card/90 backdrop-blur-xl border border-white/5 rounded-3xl shadow-2xl overflow-hidden">
-                <div class="p-5 border-b border-white/5 bg-slate-900/50 sticky top-0 z-20 backdrop-blur-md">
-                    <h2 class="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                        <i class="fas fa-broadcast-tower text-brand-400 text-sm"></i> Live Intelligence Feed
+                class="xl:col-span-1 flex flex-col h-full max-h-[632px] gap-4">
+                
+                <!-- Live Trends Panel (New) -->
+                <div class="bg-dark-card/90 backdrop-blur-xl border border-white/5 rounded-3xl shadow-2xl p-4">
+                    <h2 class="text-[13px] font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <i class="fas fa-fire text-orange-500"></i> Trending Misinformation
                     </h2>
-                    <p class="text-[13px] text-gray-400 mt-1">Focusing on: <span id="userRegionLabel"
-                            class="text-white font-medium">detecting...</span></p>
+                    <div id="liveTrendsContainer" class="space-y-2">
+                        <div class="animate-pulse flex space-x-4">
+                            <div class="flex-1 space-y-4 py-1">
+                                <div class="h-2 bg-slate-700 rounded w-3/4"></div>
+                                <div class="h-2 bg-slate-700 rounded w-1/2"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div id="regionalThreatsList"
-                    class="flex-grow overflow-y-auto p-4 space-y-3 relative z-10 custom-scrollbar">
-                    <!-- Feed items will be populated by JS -->
+                <!-- Feed Panel -->
+                <div class="flex-grow bg-dark-card/90 backdrop-blur-xl border border-white/5 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+                    <div class="p-4 border-b border-white/5 bg-slate-900/50 sticky top-0 z-20 backdrop-blur-md">
+                        <h2 class="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+                            <i class="fas fa-broadcast-tower text-brand-400"></i> Live Intelligence Feed
+                        </h2>
+                        <p class="text-xs text-gray-400 mt-1">Focusing on: <span id="userRegionLabel"
+                                class="text-white font-medium">detecting...</span></p>
+                    </div>
+
+                    <div id="regionalThreatsList"
+                        class="flex-grow overflow-y-auto p-4 space-y-3 relative z-10 custom-scrollbar">
+                        <!-- Feed items will be populated by JS -->
+                    </div>
                 </div>
             </div>
 
@@ -448,6 +472,15 @@
                 const bBgInfo = isFake ? 'bg-red-500/10 text-red-400' : (isUnknown ? 'bg-amber-500/10 text-amber-400' : 'bg-emerald-500/10 text-emerald-400');
                 const statusStr = isFake ? 'Fake News' : (isUnknown ? 'Under Review' : 'Verified');
 
+                // Extract city label for better UI display
+                let displayArticle = article;
+                let cityBadge = '';
+                const cityMatch = article.match(/^\[([^\]]+)\]/);
+                if (cityMatch) {
+                    cityBadge = cityMatch[1];
+                    displayArticle = article.replace(/^\[[^\]]+\]/, '').trim();
+                }
+
                 regionalThreatsList.innerHTML += `
                     <div class="bg-slate-900/50 border border-white/5 border-l-4 ${bBorder} rounded-lg p-3.5 threat-item">
                         <div class="flex justify-between items-start mb-2 gap-2">
@@ -456,19 +489,27 @@
                             </span>
                             <span class="text-[10px] text-gray-500 whitespace-nowrap"><i class="far fa-clock"></i> Just Now</span>
                         </div>
-                        <p class="text-[13px] text-gray-300 font-medium leading-snug line-clamp-3">${article}</p>
+                        ${cityBadge ? `<div class="text-[11px] font-bold text-brand-400 mb-1 flex items-center gap-1"><i class="fas fa-map-marker-alt text-[9px]"></i> ${cityBadge.toUpperCase()}</div>` : ''}
+                        <p class="text-[13px] text-gray-300 font-medium leading-snug line-clamp-3 mb-2">${displayArticle}</p>
+                        <button onclick="addCommunityNote(this)" class="text-[10px] font-semibold text-brand-400 hover:text-brand-300 transition-colors flex items-center gap-1 bg-brand-500/10 hover:bg-brand-500/20 px-2 py-1 rounded-md">
+                            <i class="fas fa-plus"></i> Add Community Note
+                        </button>
                     </div>`;
 
+                // In local mode, ALWAYS scatter markers around the user's live position.
+                // Never extract a different city from the article body — this prevents
+                // articles mentioning "[Mehsana]" from appearing far away from the user.
+                // Prioritize pinning the marker to the actual city detected in the article text
                 let cityCoords = getCityCoordsFromArticle(article);
-                if (!cityCoords) {
-                    if (currentMode === 'local' && lat && lon) {
-                        // Scatter fallback markers slightly around the center ping (approx 2 mile radius)
-                        const offsetLat = lat + (Math.random() - 0.5) * 0.04;
-                        const offsetLon = lon + (Math.random() - 0.5) * 0.04;
-                        let labelName = regionInfo.district ? `${regionInfo.district} (Nearby)` : (typeof IP_CITY !== 'undefined' && IP_CITY ? IP_CITY : regionInfo.label);
-                        cityCoords = { lat: offsetLat, lon: offsetLon, label: labelName };
-                    }
+                
+                // Fallback to scattering around user location ONLY if no city was detected in the text
+                if (!cityCoords && currentMode === 'local' && lat && lon) {
+                    const offsetLat = lat + (Math.random() - 0.5) * 0.05;
+                    const offsetLon = lon + (Math.random() - 0.5) * 0.05;
+                    const labelName = regionInfo.city || regionInfo.label;
+                    cityCoords = { lat: offsetLat, lon: offsetLon, label: labelName };
                 }
+                
                 if (!cityCoords) return;
 
                 const color = isFake ? '#ef4444' : (isUnknown ? '#f59e0b' : '#10b981');
@@ -736,7 +777,60 @@
             );
         }
 
-        window.addEventListener('load', () => initLocationAwareThreatMap());
+        // Fetch real-time trends on load
+        async function fetchLiveTrends() {
+            try {
+                const res = await fetch('/api/threat-trends');
+                const data = await res.json();
+                const container = document.getElementById('liveTrendsContainer');
+                
+                if (data.trending_topics) {
+                    container.innerHTML = data.trending_topics.map(topic => `
+                        <div class="flex items-center justify-between text-xs p-2 rounded-lg bg-slate-900/40 border border-white/5 hover:bg-slate-800 transition-colors">
+                            <div class="flex items-center gap-2">
+                                <span class="text-white font-semibold">#${topic.keyword.replace(/\s+/g, '')}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="text-gray-400">${topic.count} hits</span>
+                                <i class="fas fa-arrow-${topic.trend === 'up' ? 'up text-red-400' : 'down text-emerald-400'}"></i>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) { console.error('Error fetching trends', e); }
+        }
+        
+        // Community Notes mock handler
+        async function addCommunityNote(btn) {
+            const noteText = prompt("Add a short community note providing context or correction to this claim:");
+            if (!noteText) return;
+            
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+            try {
+                const req = await fetch('/add_note', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({text: noteText})
+                });
+                if (req.ok) {
+                    btn.innerHTML = '<i class="fas fa-check text-emerald-400"></i> Note Added';
+                    btn.className = "text-[10px] font-semibold text-emerald-400 flex items-center gap-1 bg-emerald-500/10 px-2 py-1 rounded-md";
+                    btn.disabled = true;
+                } else {
+                    const error = await req.json();
+                    alert(error.error || "Must be logged in to add notes.");
+                    btn.innerHTML = '<i class="fas fa-plus"></i> Add Community Note';
+                }
+            } catch(e) {
+                alert("Network error.");
+                btn.innerHTML = '<i class="fas fa-plus"></i> Add Community Note';
+            }
+        }
+
+        window.addEventListener('load', () => {
+            initLocationAwareThreatMap();
+            fetchLiveTrends();
+        });
         if (useLocationBtn) { useLocationBtn.addEventListener('click', (e) => { e.preventDefault(); initLocationAwareThreatMap(); }); }
 
         async function fetchIndiaNews() {
