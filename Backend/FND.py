@@ -205,29 +205,32 @@ def haversine_distance(lat1, lon1, lat2, lon2):
     r = 6371 # Radius of earth in kilometers. Use 3956 for miles
     return c * r
 
-def predict_news(text: str) -> str:
+def predict_news_internal(text: str) -> dict:
     """
-    Production-ready prediction using ensemble approach:
-    1. Language detection & script-specific modeling
-    2. Rule-based checks (definite real/fake)
-    3. Model prediction with confidence threshold
-    4. Fallback to translation for cross-model verification
+    Internal comprehensive prediction engine. Returns dict with:
+    prediction (str), confidence (float), language_name (str), reliability (str)
     """
     if not text or len(text.strip()) < 5:
-        return "Unable to Determine"
+        return {
+            "prediction": "Unable to Determine",
+            "confidence": 0.0,
+            "language_name": "Unknown",
+            "reliability": "Low"
+        }
         
     try:
-        # Detect script
+        # Detect script and language
         is_hindi = bool(re.search(r'[\u0900-\u097F]', text))
         is_gujarati = bool(re.search(r'[\u0A80-\u0AFF]', text))
-        
+        lang_name = "English"
+        if is_hindi: lang_name = "Hindi"
+        elif is_gujarati: lang_name = "Gujarati"
+
         # STEP 1: LANGUAGE-SPECIFIC MODELING (If available)
         if is_gujarati and model_gujarati is not None:
             try:
-                # Basic cleaning for Gujarati model
                 clean_gu = re.sub(r'[^\u0A80-\u0AFF\s]', ' ', text)
                 if vectorizer_gujarati:
-                    # Apply vectorizer if this is not a pipeline
                     X = vectorizer_gujarati.transform([clean_gu])
                     pred = model_gujarati.predict(X)[0]
                     proba = model_gujarati.predict_proba(X)[0]
@@ -235,14 +238,15 @@ def predict_news(text: str) -> str:
                     pred = model_gujarati.predict([clean_gu])[0]
                     proba = model_gujarati.predict_proba([clean_gu])[0]
                 
-                if max(proba) > 0.85:
-                    return "Fake News" if pred == 0 else "Real News"
+                conf = round(max(proba) * 100, 2)
+                if conf > 85:
+                    label = "Fake News" if pred == 0 else "Real News"
+                    return {"prediction": label, "confidence": conf, "language_name": "Gujarati"}
             except Exception as e:
                 logger.warning(f"Gujarati model skipped: {e}")
                 
         if is_hindi and model_hindi is not None:
             try:
-                # Basic cleaning for Hindi model
                 clean_hi = re.sub(r'[^\u0900-\u097F\s]', ' ', text)
                 if vectorizer_hindi:
                     X = vectorizer_hindi.transform([clean_hi])
@@ -252,175 +256,108 @@ def predict_news(text: str) -> str:
                     pred = model_hindi.predict([clean_hi])[0]
                     proba = model_hindi.predict_proba([clean_hi])[0]
                     
-                if max(proba) > 0.85:
-                    return "Fake News" if pred == 0 else "Real News"
+                conf = round(max(proba) * 100, 2)
+                if conf > 85:
+                    label = "Fake News" if pred == 0 else "Real News"
+                    return {"prediction": label, "confidence": conf, "language_name": "Hindi"}
             except Exception as e:
                 logger.warning(f"Hindi model skipped: {e}")
 
-
-        # STEP 2: TRANSLATE TO ENGLISH FOR CORE LOGIC (consistency)
+        # STEP 2: TRANSLATE TO ENGLISH FOR CONSISTENCY
         english_text = text
         if is_hindi or is_gujarati:
             english_text = translate_text(text, 'en')
-            logger.info(f"Translated for prediction: {english_text[:100]}...")
+            logger.info(f"Consistency Translation: {english_text[:100]}...")
 
         text_lower = english_text.lower()
         text_clean = re.sub(r'https?://\S+|www\.\S+', '', text_lower)
         text_clean = re.sub(r'\S+@\S+', '', text_clean)
         text_clean = text_clean.strip()
         
-        # STEP 3: DEFINITE FAKE - Strong indicators
+        # STEP 3: DEFINITE FAKE INDICATORS
         definite_fake_indicators = [
             'you won\'t believe', 'doctors hate this', 'one weird trick',
             'click here now', 'miracle cure', 'shocking video',
             'share before deleted', 'they don\'t want you to know'
         ]
         
-        if any(indicator in text_lower for indicator in definite_fake_indicators):
-            return "Fake News"
+        if any(indicator in text_lower for indicator in definite_fake_indicators) or re.search(r'[!]{3,}|\?{3,}', text_clean):
+            return {"prediction": "Fake News", "confidence": 98.5, "language_name": lang_name}
         
-        if re.search(r'[!]{3,}|\?{3,}', text_clean):
-            return "Fake News"
-        
-        # STEP 4: DEFINITE REAL - Source names and professional language
+        # STEP 4: DEFINITE REAL INDICATORS
         reputable_sources = [
             'reuters', 'ap news', 'associated press', 'bbc', 'cnn', 'nbc',
             'ndtv', 'india today', 'times of india', 'indian express', 'the hindu'
         ]
-        
         if any(source in text_lower for source in reputable_sources):
-            return "Real News"
+            return {"prediction": "Real News", "confidence": 99.0, "language_name": lang_name}
         
-        professional_indicators = [
-            'according to', 'said in a statement', 'reported by', 
-            'official statement', 'police said', 'safety for protection'
-        ]
-        
-        if 'police' in text_lower and ('protection' in text_lower or 'security' in text_lower or 'registered' in text_lower):
-            return "Real News"
+        if 'police' in text_lower and ('protection' in text_lower or 'security' in text_lower or 'registered' in text_lower or 'safety' in text_lower):
+            return {"prediction": "Real News", "confidence": 95.0, "language_name": lang_name}
             
-        has_professional_language = any(ind in text_lower for ind in professional_indicators)
-        has_numbers = bool(re.search(r'\d+', english_text))
-        
-        if has_professional_language and has_numbers:
-            return "Real News"
-        
-        # STEP 5: ENGLISH MODEL PREDICTION (Refined)
+        # STEP 5: ENGLISH MODEL PREDICTION (Core Logic)
         if model_article is None and model_headline is None:
-            if is_hindi or is_gujarati: return "Real News"
-            return "Real News"
+            return {"prediction": "Real News", "confidence": 70.0, "language_name": lang_name}
             
         char_count = len(text_clean)
         selected_model = model_headline if char_count < 300 and model_headline else model_article
         
-        try:
-            proba = selected_model.predict_proba([text_clean])[0]
-            prediction = selected_model.predict([text_clean])[0]
-            confidence = max(proba)
-            
-            if confidence > 0.90:
-                result = "Fake News" if prediction == 0 else "Real News"
-                if result == "Fake News" and (is_hindi or is_gujarati):
-                    if any(term in text_lower for term in ['police', 'hospital', 'arrest', 'filed', 'complaint']):
-                        return "Real News"
-                    if confidence < 0.96:
-                        return "Real News"
-                return result
+        proba = selected_model.predict_proba([text_clean])[0]
+        prediction = selected_model.predict([text_clean])[0]
+        conf = round(max(proba) * 100, 2)
+        
+        label = "Fake News" if prediction == 0 else "Real News"
+        
+        # Apply regional sensitivity tweak
+        if label == "Fake News" and (is_hindi or is_gujarati):
+            if any(term in text_lower for term in ['police', 'hospital', 'arrest', 'filed', 'complaint']):
+                label = "Real News"
+                conf = 88.0
+            elif conf < 96:
+                label = "Real News"
+                conf = 85.0
+        
+        return {"prediction": label, "confidence": conf, "language_name": lang_name}
                 
-            if is_hindi or is_gujarati:
-                return "Real News"
-            return "Real News" if prediction == 1 else "Real News"
-        except Exception:
-            if is_hindi or is_gujarati: return "Real News"
-            return "Real News"
-            
     except Exception as e:
-        logger.error(f"Prediction error: {e}")
-        return "Real News"
+        import logging
+        logging.getLogger(__name__).error(f"Internal prediction error: {e}")
+        return {"prediction": "Real News", "confidence": 50.0, "language_name": "English"}
+
+def predict_news(text: str) -> str:
+    """Backward compatible function returning only the label."""
+    return predict_news_internal(text).get("prediction", "Real News")
 
 def predict_news_with_details(text: str) -> dict:
-    """
-    Returns a dictionary with detailed prediction information:
-    prediction, confidence, reliability, reason, and language.
-    """
-    result = predict_news(text)
+    """Full detail reporter for the Analyzer UI."""
+    res = predict_news_internal(text)
+    prediction = res["prediction"]
+    confidence = res["confidence"]
     
-    # Text cleaning for model length check
-    text_clean = text.lower()
-    text_clean = re.sub(r'https?://\S+|www\.\S+', '', text_clean)
-    text_clean = re.sub(r'<.*?>', '', text_clean)
-    text_clean = re.sub(r'\S+@\S+', '', text_clean)
-    
-    char_count = len(text_clean)
-    selected_model = model_headline if char_count < 300 and model_headline else model_article
-    
-    # Calculate confidence
-    try:
-        if selected_model is not None:
-            proba = selected_model.predict_proba([text_clean])[0]
-            confidence = round(max(proba) * 100, 2)
-        else:
-            confidence = 85.0
-            if len(text) > 200:
-                confidence = 92.0
-            elif len(text) <= 100:
-                confidence = 75.0
-    except Exception:
-        confidence = 85.0
+    # Reliability scale
+    if confidence >= 90: reliability = "High"
+    elif confidence >= 75: reliability = "Medium"
+    else: reliability = "Low"
         
-    # Calculate reliability
-    if confidence >= 90:
-        reliability = "High"
-    elif confidence >= 75:
-        reliability = "Medium"
-    else:
-        reliability = "Low"
-        
-    # Human-readable rationale
-    is_real = (result == "Real News")
-    if is_real:
+    # Standardized rationale
+    if prediction == "Real News":
         if confidence >= 90:
-            reason = (
-                "The content uses neutral, factual language, mentions concrete details, "
-                "and lacks strong sensational phrases or formatting patterns that the model "
-                "has learned to associate with misinformation."
-            )
+            reason = "The content uses neutral, factual language and lacks sensational formatting patterns associated with misinformation."
         else:
-            reason = (
-                "The content partly matches patterns of reliable reporting (neutral tone, some "
-                "specific details), and the model leans towards it being real, but confidence "
-                "is not extremely high so you should still verify with trusted sources."
-            )
+            reason = "The content aligns with patterns of reliable reporting, though some dramatic phrasing suggests caution."
     else:
         if confidence >= 90:
-            reason = (
-                "The content contains wording and structural patterns strongly associated with "
-                "misinformation in the training data such as sensational or exaggerated claims, "
-                "uncertain sourcing, or emotionally charged language."
-            )
+            reason = "The content contains wording strongly associated with misinformation, such as sensational claims or emotionally charged language."
         else:
-            reason = (
-                "The model detected several signals that often appear in misinformation "
-                "(for example, very strong emotional or sensational wording, limited sourcing, "
-                "or unusual formatting), but the confidence is moderate, so treat this as a warning "
-                "and double-check with fact-checking sites."
-            )
+            reason = "The model detected signals often appearing in misinformation. Verify with trusted sources."
             
-    # Detect language (simple detection)
-    language_name = "English"
-    if any(ord(char) >= 0x0900 and ord(char) <= 0x097F for char in text):
-        language_name = "Hindi"
-    elif any(ord(char) >= 0x0A80 and ord(char) <= 0x0AFF for char in text):
-        language_name = "Gujarati"
-        
     return {
-        "prediction": result,
+        "prediction": prediction,
         "confidence": confidence,
         "reliability": reliability,
         "reason": reason,
-        "language_name": language_name
+        "language_name": res["language_name"]
     }
-
 
 def fetch_indian_news(query: str = "latest", region: str = "", city: str = "", state: str = "", language: str = "en", district: str = "") -> List[str]:
     """
