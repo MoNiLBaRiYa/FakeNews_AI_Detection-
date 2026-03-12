@@ -491,13 +491,26 @@
                 const data = await res.json();
 
                 if (res.ok) {
-                    const isFake = data.result && data.result.toLowerCase().includes('fake');
+                    const isFake = data.result && data.result.toLowerCase().includes('detected');
                     const borderColor = isFake ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)';
                     const iconClass = isFake ? 'fa-exclamation-triangle' : 'fa-shield-check';
                     const iconColor = isFake ? '#f87171' : '#34d399';
+                    const artifactColor = isFake ? '#f87171' : '#34d399';
+                    const artifactBg = isFake ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)';
+                    const artifactBorder = isFake ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)';
+                    
                     const artifacts = data.artifacts_found && data.artifacts_found.length
-                        ? data.artifacts_found.map(a => `<span class="px-2 py-0.5 rounded-md text-xs" style="background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2)">${a}</span>`).join(' ')
-                        : '<span class="text-xs text-gray-500">No artifacts detected</span>';
+                        ? data.artifacts_found.map(a => {
+                            // Check if it's high priority findings
+                            const isHighPriority = a.includes("Confirmed") || a.includes("Certainty") || a.includes("Natural");
+                            const fontSize = isHighPriority ? 'text-[14px]' : 'text-xs';
+                            const fontWeight = isHighPriority ? 'font-bold' : 'font-medium';
+                            return `<span class="px-3 py-1.5 rounded-lg ${fontSize} ${fontWeight}" style="background:${artifactBg};color:${artifactColor};border:1px solid ${artifactBorder}">${a}</span>`;
+                          }).join(' ')
+                        : '<span class="text-xs text-gray-500">No signals detected</span>';
+                    
+                    const suspectLabel = data.suspect_count !== undefined ? `<div class="text-[10px] mt-1 text-gray-500 uppercase font-black">Consensus: ${data.suspect_count}/3 Models Flagged</div>` : '';
+
                     resultDiv.style.borderColor = borderColor;
                     resultDiv.innerHTML = `
                         <div class="flex items-center gap-3 mb-4">
@@ -506,10 +519,11 @@
                             </div>
                             <div>
                                 <div class="text-lg font-black text-white">${data.result || 'Analysis Complete'}</div>
-                                <div class="text-xs text-gray-400">Confidence: <span class="font-bold" style="color:${iconColor}">${data.confidence}%</span></div>
+                                <div class="text-xs text-gray-400">Security Score: <span class="font-bold" style="color:${iconColor}">${data.confidence}%</span></div>
+                                ${suspectLabel}
                             </div>
                         </div>
-                        <div class="text-xs text-gray-500 uppercase font-bold tracking-widest mb-2">Detected Artifacts</div>
+                        <div class="text-xs text-gray-500 uppercase font-bold tracking-widest mb-2">Neural Artifacts Analysis</div>
                         <div class="flex flex-wrap gap-1.5">${artifacts}</div>`;
                     resultDiv.classList.remove('hidden');
                 } else {

@@ -451,6 +451,7 @@
             regionalThreatsList.innerHTML = '';
             const news = Array.isArray(newsData.news) ? newsData.news : [];
             const predictions = Array.isArray(newsData.predictions) ? newsData.predictions : [];
+            const rings = Array.isArray(newsData.rings) ? newsData.rings : [];
 
             if (!news.length) {
                 regionalThreatsList.innerHTML = `
@@ -463,6 +464,7 @@
 
             news.slice(0, 15).forEach((article, index) => {
                 const prediction = (predictions[index] || 'Real News').toString();
+                const ringLevel = rings[index] || 5; // Default to furthest ring if missing
                 const isFake = prediction.toLowerCase().includes('fake');
                 const isUnknown = prediction.toLowerCase().includes('unknown');
 
@@ -481,13 +483,16 @@
                     displayArticle = article.replace(/^\[[^\]]+\]/, '').trim();
                 }
 
+                // Add Ring Label to Feed
+                const ringLabel = ringLevel === 1 ? 'Live City' : (ringLevel === 2 ? 'Nearby' : (ringLevel === 3 ? 'Regional' : (ringLevel === 4 ? 'State' : 'General')));
+
                 regionalThreatsList.innerHTML += `
                     <div class="bg-slate-900/50 border border-white/5 border-l-4 ${bBorder} rounded-lg p-3.5 threat-item">
                         <div class="flex justify-between items-start mb-2 gap-2">
                             <span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${bBgInfo}">
                                 <i class="fas ${bIcon}"></i> ${statusStr}
                             </span>
-                            <span class="text-[10px] text-gray-500 whitespace-nowrap"><i class="far fa-clock"></i> Just Now</span>
+                            <span class="text-[10px] font-bold text-gray-500 uppercase tracking-tighter opacity-60">${ringLabel}</span>
                         </div>
                         ${cityBadge ? `<div class="text-[11px] font-bold text-brand-400 mb-1 flex items-center gap-1"><i class="fas fa-map-marker-alt text-[9px]"></i> ${cityBadge.toUpperCase()}</div>` : ''}
                         <p class="text-[13px] text-gray-300 font-medium leading-snug line-clamp-3 mb-2">${displayArticle}</p>
@@ -496,9 +501,6 @@
                         </button>
                     </div>`;
 
-                // In local mode, ALWAYS scatter markers around the user's live position.
-                // Never extract a different city from the article body — this prevents
-                // articles mentioning "[Mehsana]" from appearing far away from the user.
                 // Prioritize pinning the marker to the actual city detected in the article text
                 let cityCoords = getCityCoordsFromArticle(article);
                 
@@ -513,15 +515,25 @@
                 if (!cityCoords) return;
 
                 const color = isFake ? '#ef4444' : (isUnknown ? '#f59e0b' : '#10b981');
+                
+                // Radius multiplier based on proximity (ring level)
+                // Ring 1 (Live City) gets largest scale
+                const ringScale = ringLevel === 1 ? 1.5 : (ringLevel === 2 ? 1.2 : 1.0);
+                const baseRadius = isFake ? 8 : (isUnknown ? 6 : 5);
+                const finalRadius = baseRadius * ringScale;
+
                 const popup = `
                     <div class="p-2 space-y-2 max-w-[250px] font-sans">
-                        <span class="text-xs uppercase font-bold text-gray-400 tracking-wider"><i class="fas fa-map-marker-alt"></i> ${cityCoords.label || regionInfo.label}</span>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs uppercase font-bold text-gray-400 tracking-wider"><i class="fas fa-map-marker-alt"></i> ${cityCoords.label || regionInfo.label}</span>
+                            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/5 text-gray-500">${ringLabel.toUpperCase()}</span>
+                        </div>
                         <div class="text-[13px] font-bold" style="color: ${color}">${prediction}</div>
                         <p class="text-[13px] leading-snug text-gray-300 line-clamp-4 border-l border-white/10 pl-2 ml-1">${article}</p>
                     </div>`;
 
                 L.circleMarker([cityCoords.lat, cityCoords.lon], {
-                    radius: isFake ? 8 : (isUnknown ? 6 : 5),
+                    radius: finalRadius,
                     color, weight: 2, fillColor: color, fillOpacity: 0.8
                 }).bindPopup(popup).addTo(threatLayer);
             });

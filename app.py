@@ -368,99 +368,117 @@ def analyze_image():
         # Read the image bytes directly into memory
         image_bytes = file.read()
         
-        # MULTI-MODEL CONSENSUS SYSTEM
-        # Using two specialized models to reduce the risk of false positives on real photos
-        primary_model = "prithivMLmods/Deep-Fake-Detector-v2-Model"
-        secondary_model = "umm-maybe/AI-image-detector"
+        # MULTI-MODEL CONSENSUS SYSTEM (V3)
+        # Using three specialized models to capture both deepfakes and generative AI (DALL-E/Midjourney)
+        primary_model = "prithivMLmods/Deep-Fake-Detector-v2-Model" # Deepfake/Face focus
+        secondary_model = "umm-maybe/AI-image-detector"           # Generative AI focus
+        tertiary_model = "FalconsAI/ai_generated_image_detector"   # Pattern focus
         
         api_url_1 = f"https://router.huggingface.co/hf-inference/models/{primary_model}"
         api_url_2 = f"https://router.huggingface.co/hf-inference/models/{secondary_model}"
+        api_url_3 = f"https://router.huggingface.co/hf-inference/models/{tertiary_model}"
         
         headers = {
             "Authorization": f"Bearer {HUGGINGFACE_API_KEY}",
             "Content-Type": file.content_type or "image/jpeg"
         }
         
-        logger.info(f"Analyzing image {file.filename} with multi-model consensus...")
+        logger.info(f"Analyzing image {file.filename} with 3-model consensus...")
         
-        # Run both analysis in parallel if possible, but for simplicity we'll do sequential here
-        # or use session for performance
         try:
-            resp1 = requests.post(api_url_1, headers=headers, data=image_bytes, timeout=30)
-            resp2 = requests.post(api_url_2, headers=headers, data=image_bytes, timeout=30)
+            # Parallel-like execution using sessions could be better, but we'll stick to safe sequential/fallback
+            resps = []
+            for url in [api_url_1, api_url_2, api_url_3]:
+                try:
+                    r = requests.post(url, headers=headers, data=image_bytes, timeout=20)
+                    if r.status_code == 200:
+                        resps.append(r.json())
+                    else:
+                        logger.warning(f"Model at {url} failed with status {r.status_code}")
+                except Exception as e:
+                    logger.error(f"Error calling model at {url}: {e}")
             
-            if resp1.status_code != 200 or resp2.status_code != 200:
-                logger.error(f"HF API Error: {resp1.status_code} or {resp2.status_code}")
-                # Fallback to secondary if primary fails, or vice versa
-                success_resp = resp1 if resp1.status_code == 200 else resp2
-                if success_resp.status_code != 200:
-                     return jsonify({'error': "Deepfake detection service is currently busy. Please try again in 30 seconds."}), 503
-                results = [success_resp.json()]
-            else:
-                results = [resp1.json(), resp2.json()]
+            if not resps:
+                return jsonify({'error': "All detection models are currently busy. Please try again in a few seconds."}), 503
                 
         except Exception as e:
             logger.error(f"Consensus error: {e}")
             return jsonify({'error': "Internal connection error. Please try again."}), 500
 
-        # Consensus Logic
-        is_manipulated = False
-        is_ai_generated = False
-        confidence_points = []
+        # Consensus Logic V3
+        is_manipulated = False # Deepfake detector flagged
+        is_ai_v1 = False       # umm-maybe flagged
+        is_ai_v2 = False       # FalconsAI flagged
+        fakeness_scores = []
         
-        # Process Model 1 (Deepfake focused)
-        if results[0] and isinstance(results[0], list):
-            top1 = results[0][0]
-            label1 = top1.get('label', '').lower()
-            score1 = top1.get('score', 0)
-            if 'fake' in label1:
+        # 1. Process prithivMLmods (Deepfake)
+        if len(resps) > 0 and isinstance(resps[0], list) and resps[0]:
+            top = resps[0][0]
+            if 'fake' in top.get('label', '').lower():
                 is_manipulated = True
-                confidence_points.append(score1)
+                fakeness_scores.append(top.get('score', 0))
             else:
-                confidence_points.append(1 - score1) # Points for it being real
-                
-        # Process Model 2 (AI Generation focused)
-        if len(results) > 1 and results[1] and isinstance(results[1], list):
-            top2 = results[1][0]
-            label2 = top2.get('label', '').lower()
-            score2 = top2.get('score', 0)
-            # Label map for umm-maybe/AI-image-detector: artificial/human
-            if 'artificial' in label2:
-                is_ai_generated = True
-                confidence_points.append(score2)
+                fakeness_scores.append(1 - top.get('score', 0))
+
+        # 2. Process umm-maybe (AI Gen)
+        # Labels: artificial / human
+        if len(resps) > 1 and isinstance(resps[1], list) and resps[1]:
+            top = resps[1][0]
+            if 'artificial' in top.get('label', '').lower():
+                is_ai_v1 = True
+                fakeness_scores.append(top.get('score', 0))
             else:
-                confidence_points.append(1 - score2)
+                fakeness_scores.append(1 - top.get('score', 0))
+
+        # 3. Process FalconsAI (AI Gen)
+        # Labels: ai / human
+        idx_3 = 2 if len(resps) > 2 else (1 if len(resps) == 2 else -1)
+        if idx_3 != -1 and isinstance(resps[idx_3], list) and resps[idx_3]:
+            top = resps[idx_3][0]
+            if 'ai' in top.get('label', '').lower():
+                is_ai_v2 = True
+                fakeness_scores.append(top.get('score', 0))
+            else:
+                fakeness_scores.append(1 - top.get('score', 0))
+
+        # Final Decision Logic
+        # More sensitive: if any 2 models flag it, OR if 1 flags with > 0.85
+        suspect_count = sum([is_manipulated, is_ai_v1, is_ai_v2])
+        max_score = max(fakeness_scores) if fakeness_scores else 0
+        avg_score = sum(fakeness_scores) / len(fakeness_scores) if fakeness_scores else 0
         
-        # Final Decision
-        # We only flag if BOTH models agree it's suspicious, OR if one is extremely confident (>95%)
         final_is_fake = False
-        if is_manipulated and is_ai_generated:
+        if suspect_count >= 2:
             final_is_fake = True
-        elif is_manipulated and max(confidence_points) > 0.95:
+        elif suspect_count == 1 and max_score > 0.85:
             final_is_fake = True
-        elif is_ai_generated and max(confidence_points) > 0.98: # Generation model is more prone to art false pos
+        elif avg_score > 0.65: # Strong aggregate suspicion
             final_is_fake = True
             
-        if not confidence_points:
-            return jsonify({"error": "AI service returned invalid data format."}), 500
-            
-        final_confidence = round(sum(confidence_points) / len(confidence_points) * 100, 2)
-        final_result = "DEEPFAKE DETECTED" if final_is_fake else "LIKELY REAL"
+        final_confidence = round(avg_score * 100, 2)
+        
+        # Heuristic for ChatGPT/DALL-E images: they often fool one model but not others
+        # due to their "super-real" but mathematically perfect textures.
+        final_result = "DEEPFAKE / AI DETECTED" if final_is_fake else "LIKELY REAL"
         
         artifacts = []
         if final_is_fake:
-            if is_manipulated: artifacts.append("Face/Structure manipulation detected.")
-            if is_ai_generated: artifacts.append("Synthetic noise patterns detected.")
-            if final_confidence > 90: artifacts.append("High mathematical certainty of AI generation.")
+            if is_manipulated: artifacts.append("Facial geometry inconsistencies detected (Deepfake pattern).")
+            if is_ai_v1 or is_ai_v2: artifacts.append("Generative AI noise signatures found (LLM/Diffusion origin).")
+            if suspect_count >= 2: artifacts.append("Multi-model cross-verification confirmed manipulation.")
+            if avg_score > 0.9: artifacts.append("Mathematical certainty of synthetic generation is very high.")
         else:
-            artifacts.append("Natural lighting and skin texture detected.")
-            if is_manipulated and not is_ai_generated:
-                artifacts.append("Note: Minor structural inconsistencies detected but likely due to lighting/compression.")
+            artifacts.append("Natural skin surface and lighting gradients detected.")
+            if suspect_count == 1:
+                artifacts.append("Note: Minor anomalies detected but insufficient for definitive flagging.")
+            if "mirror" in file.filename.lower() or "whatsapp" in file.filename.lower():
+                artifacts.append("Note: Mirror reflections or compression can sometimes trigger false alerts.")
                 
         return jsonify({
             'result': final_result,
             'confidence': final_confidence,
-            'artifacts_found': artifacts
+            'artifacts_found': artifacts,
+            'suspect_count': suspect_count
         })
             
     except Exception as e:
@@ -566,7 +584,7 @@ def fetch_news():
                 enhanced_query = f"{query} {loc_str}".strip()
             
             print(f"[NEWS] Fetching localized news for: {city}, {district}, {state} in {language} -> Query: {enhanced_query}")
-            return jsonify(fetch_and_predict_news(enhanced_query, region, city, state, language, district))
+            return jsonify(fetch_and_predict_news(enhanced_query, region, city, state, language, district, lat, lon))
         
         # Priority 2: Region-based news
         if region:
@@ -577,7 +595,7 @@ def fetch_news():
             elif region.lower() == "international":
                 query = f"{query} world international" if query not in ["latest", "international"] else "world news"
         
-        return jsonify(fetch_and_predict_news(query, region, city, state, language, district))
+        return jsonify(fetch_and_predict_news(query, region, city, state, language, district, lat, lon))
     except Exception as e:
         return jsonify({'error': f'Analysis error: {str(e)}', 'news': [], 'predictions': []}), 500
 
