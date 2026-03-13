@@ -461,21 +461,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support & Contact
 
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/yourusername/truthguard-ai/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/yourusername/truthguard-ai/discussions)
-- 📧 **Email**: support@truthguard.ai
-- 🐦 **Twitter**: [@TruthGuardAI](https://twitter.com/truthguardai)
-
----
-
-## ⚡ Quick Links
-
-- 🚀 [Live Demo](https://demo.truthguard.ai)
-- 📖 [API Documentation](https://docs.truthguard.ai)
-- 🎥 [Video Tutorial](https://youtube.com/watch?v=demo)
-- 📊 [Performance Metrics](https://metrics.truthguard.ai)
-
----
 
 *Built with ❤️ for a more truthful internet. Together, we can fight misinformation one fact-check at a time.*
 
